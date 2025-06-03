@@ -13,6 +13,7 @@ import PageHeader from './ui/PageHeader';
 import Card from './ui/Card';
 import Loading from './ui/Loading';
 import { chartTheme } from '../utils/theme';
+import { calculateHandicapIndex, getHandicapTrend, getHandicapDetails } from '../utils/handicapCalculator';
 
 // Pine Valley Course Data from CLAUDE.md
 const PINE_VALLEY_HOLES = [
@@ -92,6 +93,8 @@ export default function PineValleyAnalysis() {
   const [parPerformance, setParPerformance] = useState([]);
   const [selectedTimeRange, setSelectedTimeRange] = useState('all');
   const [hoveredHole, setHoveredHole] = useState(null);
+  const [handicapDetails, setHandicapDetails] = useState(null);
+  const [handicapTrend, setHandicapTrend] = useState([]);
 
   useEffect(() => {
     fetchAllData();
@@ -318,6 +321,14 @@ export default function PineValleyAnalysis() {
 
       setParPerformance(parPerformanceData);
 
+      // Calculate GHIN Handicap Index
+      const details = getHandicapDetails(roundsData || []);
+      setHandicapDetails(details);
+
+      // Calculate handicap trend
+      const trend = getHandicapTrend(roundsData || []);
+      setHandicapTrend(trend);
+
     } catch (err) {
       console.error('Error fetching Pine Valley data:', err);
       setError(err.message);
@@ -342,9 +353,8 @@ export default function PineValleyAnalysis() {
 
   // Calculate summary statistics
   const totalRounds = rounds.length;
-  const avgScore = rounds.reduce((sum, r) => sum + r.adjusted_gross_score, 0) / totalRounds;
-  const avgDifferential = rounds.reduce((sum, r) => sum + r.differential, 0) / totalRounds;
-  const bestScore = Math.min(...rounds.map(r => r.adjusted_gross_score));
+  const avgScore = totalRounds > 0 ? rounds.reduce((sum, r) => sum + r.adjusted_gross_score, 0) / totalRounds : 0;
+  const bestScore = totalRounds > 0 ? Math.min(...rounds.map(r => r.adjusted_gross_score)) : 0;
   // const worstScore = Math.max(...rounds.map(r => r.adjusted_gross_score));
 
   // Find hardest and easiest holes
@@ -399,9 +409,13 @@ export default function PineValleyAnalysis() {
         </Card>
         
         <Card className="p-4 sm:p-6">
-          <h3 className="text-gray-400 text-sm mb-2">Handicap Index</h3>
-          <p className="text-2xl sm:text-3xl font-bold text-purple-400">{avgDifferential.toFixed(1)}</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">Average differential</p>
+          <h3 className="text-gray-400 text-sm mb-2">GHIN Handicap Index</h3>
+          <p className="text-2xl sm:text-3xl font-bold text-purple-400">
+            {handicapDetails?.handicapIndex !== null ? handicapDetails.handicapIndex.toFixed(1) : 'N/A'}
+          </p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            {handicapDetails?.message || 'Insufficient rounds'}
+          </p>
         </Card>
       </div>
 
@@ -725,6 +739,111 @@ export default function PineValleyAnalysis() {
           </ResponsiveContainer>
         </div>
       </Card>
+
+      {/* GHIN Handicap Details */}
+      {handicapDetails && handicapDetails.handicapIndex !== null && (
+        <Card className="p-3 sm:p-4 md:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">GHIN Handicap Index Details</h2>
+          
+          {/* Handicap Trend Chart */}
+          {handicapTrend.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-gray-400 text-sm mb-3">Handicap Index Trend</h3>
+              <div className="h-48 sm:h-56 md:h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={handicapTrend} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke={chartTheme.text}
+                      tick={{ fill: chartTheme.text, fontSize: 12 }}
+                      tickFormatter={(date) => format(new Date(date), 'MMM yyyy')}
+                    />
+                    <YAxis 
+                      stroke={chartTheme.text}
+                      tick={{ fill: chartTheme.text, fontSize: 12 }}
+                      label={{ value: 'Handicap Index', angle: -90, position: 'insideLeft', fill: chartTheme.text, fontSize: 12 }}
+                    />
+                    <Tooltip 
+                      {...chartTheme.tooltipStyle}
+                      labelFormatter={(date) => format(new Date(date), 'MMM d, yyyy')}
+                      formatter={(value) => value.toFixed(1)}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="handicapIndex" 
+                      stroke="#a855f7" 
+                      strokeWidth={3}
+                      dot={{ fill: '#a855f7', r: 4 }}
+                      name="Handicap Index"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+          
+          {/* Calculation Details */}
+          <div className="bg-gray-900 rounded-lg p-3 sm:p-4">
+            <h3 className="text-purple-400 font-semibold mb-3 text-sm sm:text-base">Calculation Details</h3>
+            <div className="space-y-2 text-xs sm:text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total Rounds Available:</span>
+                <span className="text-white font-semibold">{handicapDetails.totalRounds}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Differentials Used:</span>
+                <span className="text-white font-semibold">{handicapDetails.numDifferentials}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Average of Best Differentials:</span>
+                <span className="text-white font-semibold">{handicapDetails.averageDifferential.toFixed(1)}</span>
+              </div>
+              {handicapDetails.adjustment !== 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Adjustment Applied:</span>
+                  <span className="text-white font-semibold">{handicapDetails.adjustment}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-400">96% Factor Applied:</span>
+                <span className="text-white font-semibold">Yes</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
+                <span className="text-gray-400">GHIN Handicap Index:</span>
+                <span className="text-purple-400 font-bold text-lg">{handicapDetails.handicapIndex.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Rounds Used in Calculation */}
+          <div className="mt-4">
+            <h3 className="text-gray-400 text-sm mb-3">Rounds Used in Calculation</h3>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="min-w-max sm:min-w-0">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-2 px-3 sm:px-4 text-gray-400">Date</th>
+                      <th className="text-right py-2 px-3 sm:px-4 text-gray-400">Score</th>
+                      <th className="text-right py-2 px-3 sm:px-4 text-gray-400">Differential</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {handicapDetails.roundsUsed.map((round, idx) => (
+                      <tr key={idx} className="border-b border-gray-700">
+                        <td className="py-2 px-3 sm:px-4 text-white">{format(new Date(round.played_at), 'MMM d, yyyy')}</td>
+                        <td className="py-2 px-3 sm:px-4 text-right text-gray-300">{round.adjusted_gross_score}</td>
+                        <td className="py-2 px-3 sm:px-4 text-right text-purple-400 font-semibold">{round.differential.toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Strategic Insights */}
       <Card className="p-3 sm:p-4 md:p-6">

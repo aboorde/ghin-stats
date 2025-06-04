@@ -20,6 +20,7 @@ const Settings = () => {
     profile_visibility: 'private',
     display_handicap: true,
     display_scores: false,
+    display_statistics: true,
     measurement_system: 'imperial',
   })
 
@@ -33,6 +34,7 @@ const Settings = () => {
         profile_visibility: profile.profile_visibility || 'private',
         display_handicap: profile.display_handicap ?? true,
         display_scores: profile.display_scores ?? false,
+        display_statistics: profile.display_statistics ?? true,
         measurement_system: profile.measurement_system || 'imperial',
       })
     }
@@ -52,12 +54,16 @@ const Settings = () => {
     setMessage(null)
 
     try {
+      // Convert empty strings to null for fields with unique constraints
+      const dataToUpdate = {
+        ...formData,
+        ghin_number: formData.ghin_number?.trim() || null,
+        updated_at: new Date().toISOString()
+      }
+
       const { error } = await supabase
         .from('users')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
+        .update(dataToUpdate)
         .eq('id', user.id)
 
       if (error) throw error
@@ -209,6 +215,17 @@ const Settings = () => {
                       className="w-4 h-4 text-emerald-500 bg-gray-700 border-gray-600 rounded focus:ring-emerald-500"
                     />
                     <span className="text-gray-300">Display individual scores on public profile</span>
+                  </label>
+
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      name="display_statistics"
+                      checked={formData.display_statistics}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-emerald-500 bg-gray-700 border-gray-600 rounded focus:ring-emerald-500"
+                    />
+                    <span className="text-gray-300">Display statistics (course summary, yearly analysis) on public profile</span>
                   </label>
                 </div>
               </div>

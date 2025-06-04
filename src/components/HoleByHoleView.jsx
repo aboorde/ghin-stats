@@ -6,7 +6,7 @@ import PageHeader from './ui/PageHeader'
 import Card from './ui/Card'
 import Loading from './ui/Loading'
 
-const HoleByHoleView = () => {
+const HoleByHoleView = ({ userId }) => {
   const [selectedRound, setSelectedRound] = useState(null)
   const [rounds, setRounds] = useState([])
   const [holeDetails, setHoleDetails] = useState([])
@@ -15,7 +15,7 @@ const HoleByHoleView = () => {
 
   useEffect(() => {
     fetchRounds()
-  }, [])
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectedRound) {
@@ -26,10 +26,17 @@ const HoleByHoleView = () => {
   const fetchRounds = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      let query = supabase
         .from('scores')
         .select('id, played_at, course_name, adjusted_gross_score, number_of_holes')
         .order('played_at', { ascending: false })
+
+      // Filter by user_id if provided
+      if (userId) {
+        query = query.eq('user_id', userId)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 

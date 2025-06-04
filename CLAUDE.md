@@ -646,3 +646,340 @@ if (!data.length) return <Empty />
 score?.toFixed(1) ?? '-'
 array?.length || 0
 ```
+
+# Recent Work and Lessons Learned (December 4, 2024)
+
+## Major Implementations
+
+### 1. GHIN Handicap Calculation
+- Created `src/utils/handicapCalculator.js` with proper USGA/GHIN rules
+- Implements differential selection based on round count (3-20+ rounds)
+- Applies adjustments for 3-6 rounds and 0.96 multiplier
+- Added handicap trend chart and detailed calculation display
+
+### 2. User Management System
+- Created comprehensive user tables (users, user_sessions, subscriptions)
+- Links to existing scores via golfer_id
+- Full subscription management with Stripe integration
+- Privacy controls and user preferences
+
+### 3. Row Level Security (RLS)
+- Enabled RLS on all 8 tables
+- Created 35 security policies
+- Implemented data ownership based on golfer_id
+- Added privacy controls for public profiles
+
+## Critical Pitfalls to Avoid
+
+### 1. GitHub Pages Deployment
+**Problem**: Environment protection rules block deployment
+**Solution**: Use `deploy-simple.yml` workflow instead of GitHub's official method
+```yaml
+# Use peaceiris/actions-gh-pages@v3 for direct branch deployment
+# Avoids environment protection issues
+```
+
+### 2. Tailwind CSS v4 Configuration
+**Problem**: Old plugin format deprecated
+**Wrong**: `plugins: { tailwindcss: {}, autoprefixer: {} }`
+**Correct**: `plugins: { '@tailwindcss/postcss': {}, autoprefixer: {} }`
+
+### 3. RLS Performance
+**Problem**: Complex joins in RLS policies impact performance
+**Solution**: 
+- Use EXISTS instead of IN subqueries
+- Denormalize user_id to related tables
+- Create proper indexes on all foreign keys
+
+### 4. Supabase Migrations
+**Problem**: Can't add foreign keys with existing orphaned data
+**Solution**:
+- Use DEFERRABLE INITIALLY DEFERRED constraints
+- Create separate migration for data linking
+- Always use IF NOT EXISTS for idempotency
+
+### 5. GHIN Calculation Edge Cases
+**Problem**: Different rules for different round counts
+**Solution**: Comprehensive switch statement handling all cases
+```javascript
+if (roundCount === 3) { numDifferentials = 1; adjustment = -2.0; }
+// ... etc for all cases up to 20+
+```
+
+## Database Schema Updates
+
+### New Tables
+- `users` - User profiles linked to auth.users
+- `user_sessions` - Session tracking
+- `subscriptions` - Payment management
+- `audit_logs` - Security audit trail
+
+### Updated Tables (pending migration)
+- `scores` - Add user_id column
+- `hole_details` - Add user_id column  
+- `statistics` - Add user_id column
+- `adjustments` - Add user_id column
+
+### Security Functions
+- `has_premium_access()` - Check subscription
+- `user_owns_score()` - Verify ownership
+- `score_is_public()` - Privacy check
+- `get_current_user_golfer_id()` - User helper
+
+## Files Created Today
+1. `.github/workflows/deploy-simple.yml` - Fixed deployment
+2. `src/utils/handicapCalculator.js` - GHIN calculation
+3. `user_management_migration.sql` - User tables
+4. `link_existing_data_migration.sql` - FK relationships (not applied)
+5. `rls_policies_migration.sql` - Security policies
+6. `RLS_DOCUMENTATION.md` - Security documentation
+7. `TODAY_WORK_SUMMARY.md` - Comprehensive summary
+
+## Next Steps Required
+1. Create auth users in Supabase
+2. Run secure_data_migration.sql (replaces link_existing_data_migration.sql)
+3. Handle any orphaned data using admin functions
+4. Update frontend for authentication
+5. Test RLS with authenticated requests
+
+## Secure Data Migration System (December 4, 2024)
+
+### New Migration Architecture
+Created a comprehensive migration system with:
+
+1. **secure_data_migration.sql** - Main migration with:
+   - Migration tracking and history
+   - Orphaned data management
+   - Rollback capabilities
+   - Enhanced RLS policies with better performance
+   - Automated verification functions
+
+2. **orphaned_data_admin.sql** - Admin tools including:
+   - Detailed views for orphaned data
+   - Bulk assignment functions
+   - User creation with auto-assignment
+   - Recovery functions for orphaned scores
+   - Reporting and monitoring tools
+
+3. **MIGRATION_GUIDE.md** - Complete documentation
+4. **test_migration.sql** - Testing script for safe validation
+
+### Key Features
+- **Atomicity**: Full transaction support with rollback
+- **Orphan Handling**: Tracks and manages data without matching users
+- **Audit Trail**: Complete history of all migrations
+- **Performance**: Optimized indexes for RLS queries
+- **Admin Tools**: Comprehensive functions for data management
+
+### Migration Functions
+- `migrate_golf_data_ownership()` - Main migration function
+- `rollback_data_migration(migration_id)` - Safe rollback
+- `verify_data_migration()` - Integrity checks
+- `bulk_assign_golfer_data()` - Assign all data for a golfer
+- `recover_orphaned_score()` - Recover individual scores
+- `create_user_for_orphaned_golfer()` - Create user and assign data
+
+### RLS Improvements
+- Simplified policies using user_id directly (not joins)
+- Added composite indexes for common queries
+- Partial indexes for public profile filtering
+- Service role bypass for admin operations
+
+# Critical Lessons Learned (December 2024)
+
+## AUTHENTICATION & USER MANAGEMENT
+
+### React Component Errors - ALWAYS CHECK FOR NULL AND UNDEFINED
+**Problem**: `Cannot read properties of undefined (reading 'toFixed')`
+**Wrong**:
+```javascript
+{profile.handicap_index !== null && (
+  <span>{profile.handicap_index.toFixed(1)}</span>
+)}
+```
+**Correct**:
+```javascript
+{profile.handicap_index !== null && profile.handicap_index !== undefined && (
+  <span>{profile.handicap_index.toFixed(1)}</span>
+)}
+```
+**Better**: Calculate on the fly if missing:
+```javascript
+const [handicapIndex, setHandicapIndex] = useState(null)
+// In useEffect: calculate if not stored
+if (!profileData.handicap_index) {
+  const calculatedIndex = calculateHandicapIndex(scores)
+  setHandicapIndex(calculatedIndex)
+}
+```
+
+### Authentication Flow Best Practices
+- **AuthContext Pattern**: Centralize auth state management
+- **Protected Routes**: Use wrapper components for auth checking
+- **Loading States**: ALWAYS show loading while checking auth
+- **Profile Privacy**: Check visibility before showing data
+
+### User Data Migration Order Matters!
+1. Create auth users FIRST
+2. Create user profiles in public.users
+3. THEN run data ownership migration
+4. Verify with rollback capability
+
+## DATABASE & MIGRATIONS
+
+### Supabase Migration Best Practices
+- **ALWAYS use IF NOT EXISTS**: Makes migrations idempotent
+- **Transaction wrapping**: Use BEGIN/COMMIT for atomicity
+- **Rollback functions**: Create inverse operations
+- **Track migrations**: Use migration_history table
+
+### Foreign Key Constraints with Existing Data
+**Problem**: Can't add FKs when orphaned data exists
+**Solution**:
+```sql
+-- Use DEFERRABLE constraints
+ALTER TABLE scores
+ADD CONSTRAINT fk_scores_user
+FOREIGN KEY (user_id) REFERENCES users(id)
+DEFERRABLE INITIALLY DEFERRED;
+```
+
+### RLS Performance Optimization
+**NEVER** use complex joins in RLS policies!
+**Wrong**:
+```sql
+CREATE POLICY "user_scores" ON scores
+USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.golfer_id = scores.golfer_id));
+```
+**Correct**:
+```sql
+-- Add user_id directly to tables
+CREATE POLICY "user_scores" ON scores
+USING (user_id = auth.uid());
+```
+**Always add indexes**:
+```sql
+CREATE INDEX idx_scores_user_id ON scores(user_id);
+CREATE INDEX idx_scores_user_golfer ON scores(user_id, golfer_id);
+```
+
+## DEPLOYMENT & BUILD ISSUES
+
+### GitHub Pages Environment Protection
+**Problem**: Official GitHub Action fails with environment protection
+**Solution**: Use custom deployment:
+```yaml
+- uses: peaceiris/actions-gh-pages@v3
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    publish_dir: ./dist
+```
+
+### Tailwind CSS v4 Breaking Change
+**Wrong** (PostCSS config):
+```javascript
+plugins: { tailwindcss: {}, autoprefixer: {} }
+```
+**Correct**:
+```javascript
+plugins: { '@tailwindcss/postcss': {}, autoprefixer: {} }
+```
+
+## FRONTEND PATTERNS
+
+### Component Data Fetching with userId
+**Pattern**: Pass userId to all view components
+```javascript
+// In Profile.jsx
+<RoundByRoundView userId={userId} />
+
+// In component
+const RoundByRoundView = ({ userId }) => {
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data } = await supabase
+        .from('scores')
+        .select('*')
+        .eq('user_id', userId) // Filter by user
+    }
+  }, [userId]) // Don't forget dependency!
+}
+```
+
+### Loading States Are Critical
+**Always handle 3 states**:
+```javascript
+if (loading) return <Loading />
+if (error) return <Error message={error} />
+if (!data?.length) return <Empty />
+// Then render data
+```
+
+## GHIN HANDICAP CALCULATION
+
+### Edge Cases for Round Counts
+**Remember**: Different rules for different counts!
+```javascript
+switch(roundCount) {
+  case 3: numDifferentials = 1; adjustment = -2.0; break;
+  case 4: numDifferentials = 1; adjustment = -1.0; break;
+  case 5: numDifferentials = 1; adjustment = 0; break;
+  case 6: numDifferentials = 2; adjustment = -1.0; break;
+  // ... up to 20+
+}
+// ALWAYS apply 0.96 multiplier at the end!
+const handicapIndex = (avgDifferential + adjustment) * 0.96;
+```
+
+### Auto-Update Handicap on New Scores
+**Use database triggers**:
+```sql
+CREATE TRIGGER update_handicap_on_score_insert
+AFTER INSERT ON scores
+FOR EACH ROW
+EXECUTE FUNCTION update_user_handicap_index();
+```
+
+## SECURITY REMINDERS
+
+### Environment Variables
+- NEVER commit .env files
+- ALWAYS validate they exist before using
+- Use VITE_ prefix for client-side vars in Vite
+
+### Data Privacy
+- Default to private profiles
+- Check visibility before showing data
+- Use display preferences (show/hide scores)
+- Implement proper audit logging
+
+## QUICK DEBUGGING CHECKLIST
+
+1. **Component not updating?**
+   - Check useEffect dependencies
+   - Verify state is actually changing
+   - Look for missing await on async calls
+
+2. **Supabase query returning null?**
+   - Check RLS policies
+   - Verify user is authenticated
+   - Use .single() for single row queries
+
+3. **Build failing?**
+   - Check for TypeScript errors
+   - Verify all imports exist
+   - Look for circular dependencies
+
+4. **Deployment failing?**
+   - Use deploy-simple.yml workflow
+   - Check environment variables
+   - Verify base path in vite.config.js
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+ALWAYS check for null AND undefined before calling methods on objects.
+ALWAYS use proper error handling with try-catch in async functions.
+ALWAYS add proper indexes when filtering by columns in queries.

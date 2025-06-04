@@ -1,90 +1,55 @@
 import React, { useMemo } from 'react';
+import { calculateDetailedStatistics, formatDetailedStatistics } from '../services/detailedStatsService';
 
 /**
- * Component to display detailed statistics and insights
- * @param {Array} scores - Array of score objects
- * @param {Object} summaryStats - Summary statistics object
+ * DetailedStats Component
+ * 
+ * Displays comprehensive statistical analysis for golf performance.
+ * Uses the detailedStatsService to calculate:
+ * - Score distribution across ranges
+ * - Recent improvement trends
+ * - Consistency metrics
+ * - Par type performance
+ * 
+ * @param {Array} scores - Array of score objects with statistics
+ * @param {Object} summaryStats - Summary statistics object (legacy prop, not used)
  */
 function DetailedStats({ scores, summaryStats }) {
-  const additionalStats = useMemo(() => {
+  // Calculate all detailed statistics using our service
+  const detailedStats = useMemo(() => {
     if (!scores || scores.length === 0) return null;
-
-    // Calculate scoring distribution
-    const scoreRanges = {
-      '< 90': 0,
-      '90-94': 0,
-      '95-99': 0,
-      '100+': 0
-    };
-
-    scores.forEach(score => {
-      const s = score.adjusted_gross_score;
-      if (s < 90) scoreRanges['< 90']++;
-      else if (s <= 94) scoreRanges['90-94']++;
-      else if (s <= 99) scoreRanges['95-99']++;
-      else scoreRanges['100+']++;
-    });
-
-    // Calculate improvement over time
-    const recentScores = scores.slice(0, 10);
-    const olderScores = scores.slice(-10);
-    const recentAvg = recentScores.reduce((sum, s) => sum + s.adjusted_gross_score, 0) / recentScores.length;
-    const olderAvg = olderScores.reduce((sum, s) => sum + s.adjusted_gross_score, 0) / olderScores.length;
-    const improvement = olderAvg - recentAvg;
-
-    // Calculate consistency (standard deviation)
-    const mean = scores.reduce((sum, s) => sum + s.adjusted_gross_score, 0) / scores.length;
-    const variance = scores.reduce((sum, s) => sum + Math.pow(s.adjusted_gross_score - mean, 2), 0) / scores.length;
-    const stdDev = Math.sqrt(variance);
-
-    // Calculate par performance averages
-    const parStats = scores
-      .filter(s => s.statistics && s.statistics[0])
-      .map(s => s.statistics[0]);
     
-    const avgPar3 = parStats.length > 0 
-      ? (parStats.reduce((sum, stat) => sum + (stat.par3s_average || 0), 0) / parStats.length).toFixed(2)
-      : 'N/A';
+    // Calculate raw statistics
+    const stats = calculateDetailedStatistics(scores);
     
-    const avgPar4 = parStats.length > 0
-      ? (parStats.reduce((sum, stat) => sum + (stat.par4s_average || 0), 0) / parStats.length).toFixed(2)
-      : 'N/A';
-    
-    const avgPar5 = parStats.length > 0
-      ? (parStats.reduce((sum, stat) => sum + (stat.par5s_average || 0), 0) / parStats.length).toFixed(2)
-      : 'N/A';
-
-    return {
-      scoreRanges,
-      improvement: improvement.toFixed(1),
-      recentAvg: recentAvg.toFixed(1),
-      consistency: stdDev.toFixed(1),
-      avgPar3,
-      avgPar4,
-      avgPar5
-    };
+    // Format for display
+    return formatDetailedStatistics(stats);
   }, [scores]);
 
-  if (!summaryStats || !additionalStats) {
+  // Don't render if no data available
+  if (!detailedStats) {
     return null;
   }
 
   return (
-    <div className="detailed-stats">
-      <h3>Detailed Analysis</h3>
+    <div className="space-y-6">
+      <h3 className="text-2xl font-bold text-gray-200">Detailed Analysis</h3>
       
-      <div className="stats-row">
-        <div className="stat-card">
-          <h4>Score Distribution</h4>
-          <div className="distribution-list">
-            {Object.entries(additionalStats.scoreRanges).map(([range, count]) => (
-              <div key={range} className="distribution-item">
-                <span className="range-label">{range}:</span>
-                <span className="range-count">{count} rounds</span>
-                <div className="range-bar">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Score Distribution Card */}
+        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+          <h4 className="text-lg font-semibold text-gray-300 mb-4">Score Distribution</h4>
+          <div className="space-y-3">
+            {detailedStats.scoreDistribution.map((item) => (
+              <div key={item.range} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">{item.range}:</span>
+                  <span className="text-gray-300">{item.count} rounds ({item.displayPercentage})</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
                   <div 
-                    className="range-fill" 
-                    style={{ width: `${(count / scores.length) * 100}%` }}
+                    className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${item.percentage}%` }}
                   />
                 </div>
               </div>
@@ -92,43 +57,81 @@ function DetailedStats({ scores, summaryStats }) {
           </div>
         </div>
 
-        <div className="stat-card">
-          <h4>Performance Trends</h4>
-          <div className="trend-stats">
-            <div className="trend-item">
-              <span className="trend-label">Recent 10 Rounds Avg:</span>
-              <span className="trend-value">{additionalStats.recentAvg}</span>
+        {/* Performance Trends Card */}
+        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+          <h4 className="text-lg font-semibold text-gray-300 mb-4">Performance Trends</h4>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Recent 10 Rounds Avg:</span>
+              <span className="text-lg font-medium text-gray-200">{detailedStats.recentAverage}</span>
             </div>
-            <div className="trend-item">
-              <span className="trend-label">Improvement:</span>
-              <span className={`trend-value ${additionalStats.improvement > 0 ? 'positive' : 'negative'}`}>
-                {additionalStats.improvement > 0 ? '-' : '+'}{Math.abs(additionalStats.improvement)} strokes
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Improvement:</span>
+              <span className={`text-lg font-medium ${detailedStats.improvement.isImproving ? 'text-green-400' : 'text-red-400'}`}>
+                {detailedStats.improvement.display}
               </span>
             </div>
-            <div className="trend-item">
-              <span className="trend-label">Consistency (Std Dev):</span>
-              <span className="trend-value">±{additionalStats.consistency}</span>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">Consistency:</span>
+                <span className={`text-lg font-medium ${detailedStats.consistency.rating.color}`}>
+                  {detailedStats.consistency.display}
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 text-right">
+                {detailedStats.consistency.rating.description}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="stat-card">
-          <h4>Par Type Performance</h4>
-          <div className="par-stats">
-            <div className="par-item">
-              <span className="par-label">Par 3 Average:</span>
-              <span className="par-value">{additionalStats.avgPar3}</span>
-              <span className="par-diff">({additionalStats.avgPar3 !== 'N/A' ? (additionalStats.avgPar3 - 3).toFixed(2) : 'N/A'} over par)</span>
+        {/* Par Type Performance Card */}
+        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+          <h4 className="text-lg font-semibold text-gray-300 mb-4">Par Type Performance</h4>
+          <div className="space-y-4">
+            {/* Par 3 */}
+            <div className="pb-3 border-b border-gray-700">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">Par 3 Average:</span>
+                <span className="text-lg font-medium text-gray-200">
+                  {detailedStats.parTypePerformance.par3.display}
+                </span>
+              </div>
+              {detailedStats.parTypePerformance.par3.vsPar && (
+                <div className="text-xs text-gray-500 text-right mt-1">
+                  {detailedStats.parTypePerformance.par3.vsPar} over par
+                </div>
+              )}
             </div>
-            <div className="par-item">
-              <span className="par-label">Par 4 Average:</span>
-              <span className="par-value">{additionalStats.avgPar4}</span>
-              <span className="par-diff">({additionalStats.avgPar4 !== 'N/A' ? (additionalStats.avgPar4 - 4).toFixed(2) : 'N/A'} over par)</span>
+            
+            {/* Par 4 */}
+            <div className="pb-3 border-b border-gray-700">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">Par 4 Average:</span>
+                <span className="text-lg font-medium text-gray-200">
+                  {detailedStats.parTypePerformance.par4.display}
+                </span>
+              </div>
+              {detailedStats.parTypePerformance.par4.vsPar && (
+                <div className="text-xs text-gray-500 text-right mt-1">
+                  {detailedStats.parTypePerformance.par4.vsPar} over par
+                </div>
+              )}
             </div>
-            <div className="par-item">
-              <span className="par-label">Par 5 Average:</span>
-              <span className="par-value">{additionalStats.avgPar5}</span>
-              <span className="par-diff">({additionalStats.avgPar5 !== 'N/A' ? (additionalStats.avgPar5 - 5).toFixed(2) : 'N/A'} over par)</span>
+            
+            {/* Par 5 */}
+            <div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">Par 5 Average:</span>
+                <span className="text-lg font-medium text-gray-200">
+                  {detailedStats.parTypePerformance.par5.display}
+                </span>
+              </div>
+              {detailedStats.parTypePerformance.par5.vsPar && (
+                <div className="text-xs text-gray-500 text-right mt-1">
+                  {detailedStats.parTypePerformance.par5.vsPar} over par
+                </div>
+              )}
             </div>
           </div>
         </div>

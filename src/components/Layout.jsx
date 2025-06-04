@@ -1,14 +1,10 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
-const Layout = ({ children }) => {
-  const navItems = [
-    { path: '/', label: 'Round by Round', icon: '📊' },
-    { path: '/hole-by-hole', label: 'Hole by Hole', icon: '⛳' },
-    { path: '/course-summary', label: 'Course Summary', icon: '🏌️' },
-    { path: '/year-by-year', label: 'Year by Year', icon: '📅' },
-    { path: '/pine-valley', label: 'Pine Valley', icon: '🌲' },
-  ]
+const Layout = ({ children, hideHeader = false }) => {
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-green-950">
@@ -20,66 +16,49 @@ const Layout = ({ children }) => {
       </div>
       
       {/* Header */}
-      <header className="relative z-10 backdrop-blur-md bg-gray-900/80 border-b border-gray-800">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-white font-bold shadow-lg text-sm sm:text-base">
-                G
+      {!hideHeader && (
+        <header className="relative z-10 backdrop-blur-md bg-gray-900/80 border-b border-gray-800">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-14 sm:h-16">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div 
+                  className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-white font-bold shadow-lg text-sm sm:text-base cursor-pointer"
+                  onClick={() => navigate('/')}
+                >
+                  G
+                </div>
+                <h1 
+                  className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-green-400 to-yellow-400 bg-clip-text text-transparent cursor-pointer"
+                  onClick={() => navigate('/')}
+                >
+                  <span className="hidden sm:inline">GHIN Stats Tracker</span>
+                  <span className="sm:hidden">GHIN Stats</span>
+                </h1>
               </div>
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-green-400 to-yellow-400 bg-clip-text text-transparent">
-                <span className="hidden sm:inline">Golf Stats Dashboard</span>
-                <span className="sm:hidden">Golf Stats</span>
-              </h1>
-            </div>
-            <div className="text-xs sm:text-sm text-gray-400 hidden xs:block">
-              Track • Analyze • Improve
+              <div className="flex items-center gap-4">
+                {user && (
+                  <button
+                    onClick={async () => {
+                      await signOut()
+                      navigate('/')
+                    }}
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      {/* Navigation */}
-      <nav className="relative z-10 backdrop-blur-md bg-gray-900/60 border-b border-gray-800 sticky top-0">
-        <div className="container mx-auto px-2 sm:px-4">
-          <div className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
-            {navItems.map(({ path, label, icon }) => (
-              <NavLink
-                key={path}
-                to={path}
-                className={({ isActive }) => `
-                  flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg
-                  transition-all duration-300
-                  whitespace-nowrap min-w-fit
-                  text-sm sm:text-base
-                  ${isActive 
-                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30' 
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700'
-                  }
-                `}
-              >
-                <span className="text-base sm:text-lg">{icon}</span>
-                <span className="font-medium hidden sm:inline">{label}</span>
-                <span className="font-medium sm:hidden text-xs">{label.split(' ')[0]}</span>
-              </NavLink>
-            ))}
-          </div>
-        </div>
-      </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+      <main className="relative z-10">
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 mt-auto border-t border-gray-800 bg-gray-900/60 backdrop-blur-md">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="text-center text-xs sm:text-sm text-gray-500">
-            <p>Elevate your game with data-driven insights</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

@@ -1,12 +1,45 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
-import Layout from './components/Layout'
-import RoundByRoundView from './components/RoundByRoundView'
-import HoleByHoleView from './components/HoleByHoleView'
-import CourseByCourseSummary from './components/CourseByCourseSummary'
-import YearByYearAnalysis from './components/YearByYearAnalysis'
-import PineValleyAnalysis from './components/PineValleyAnalysis'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import Login from './components/Login'
+import Profile from './components/Profile'
+import Settings from './components/Settings'
+import PublicProfilesList from './components/PublicProfilesList'
+import Loading from './components/ui/Loading'
+
+// Protected route wrapper
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth()
+  
+  if (loading) return <Loading />
+  if (!user) return <Navigate to="/" replace />
+  
+  return children
+}
+
+// App router component
+const AppRouter = () => {
+  const { user, loading } = useAuth()
+  
+  if (loading) return <Loading />
+  
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={user ? <Navigate to={`/profile/${user.id}`} replace /> : <Login />} />
+      <Route path="/profiles/public" element={<PublicProfilesList />} />
+      <Route path="/profile/:userId" element={<Profile />} />
+      
+      {/* Protected routes */}
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      } />
+    </Routes>
+  )
+}
 
 function App() {
   // Handle both /ghin-stats and /ghin-stats/ paths
@@ -14,16 +47,9 @@ function App() {
   
   return (
     <Router basename={basename}>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<RoundByRoundView />} />
-          <Route path="/round-by-round" element={<RoundByRoundView />} />
-          <Route path="/hole-by-hole" element={<HoleByHoleView />} />
-          <Route path="/course-summary" element={<CourseByCourseSummary />} />
-          <Route path="/year-by-year" element={<YearByYearAnalysis />} />
-          <Route path="/pine-valley" element={<PineValleyAnalysis />} />
-        </Routes>
-      </Layout>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
     </Router>
   )
 }

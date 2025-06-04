@@ -82,7 +82,7 @@ const DifficultyDot = (props) => {
   );
 };
 
-export default function PineValleyAnalysis() {
+export default function PineValleyAnalysis({ userId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -98,7 +98,7 @@ export default function PineValleyAnalysis() {
 
   useEffect(() => {
     fetchAllData();
-  }, [selectedTimeRange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedTimeRange, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAllData = async () => {
     try {
@@ -114,6 +114,11 @@ export default function PineValleyAnalysis() {
         `)
         .eq('course_name', 'Pine Valley CC')
         .eq('number_of_holes', 18);
+
+      // Filter by user_id if provided
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
 
       // Apply time range filter
       if (selectedTimeRange !== 'all') {

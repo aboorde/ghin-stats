@@ -2,11 +2,31 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import HolePerformanceChart from './HolePerformanceChart'
 import { normalizeCourseData } from '../utils/dataHelpers'
+import { aggregateCourseStatistics } from '../services/aggregationService'
+import { calculateHoleAveragesForChart } from '../services/statisticsService'
 import PageHeader from './ui/PageHeader'
 import Card from './ui/Card'
 import Loading from './ui/Loading'
 
-const CourseByCourseSummary = () => {
+/**
+ * CourseByCourseSummary Component
+ * 
+ * Displays aggregated performance statistics grouped by golf course.
+ * Uses the Course model and aggregation services to provide:
+ * - Course-level statistics (rounds, averages, best/worst)
+ * - Par type performance (par 3/4/5 averages)
+ * - Scoring distribution (pars, bogeys, etc.)
+ * - Hole-by-hole performance chart
+ * 
+ * Data Flow:
+ * 1. Fetches scores with statistics from Supabase
+ * 2. Aggregates data using Course model via aggregationService
+ * 3. Calculates hole averages using statisticsService
+ * 4. Displays data with responsive UI components
+ * 
+ * @param {string} userId - Filter data for specific user
+ */
+const CourseByCourseSummary = ({ userId }) => {
   const [courseData, setCourseData] = useState([])
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [holeAverages, setHoleAverages] = useState([])
@@ -15,7 +35,7 @@ const CourseByCourseSummary = () => {
 
   useEffect(() => {
     fetchCourseData()
-  }, [])
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectedCourse) {
@@ -26,7 +46,9 @@ const CourseByCourseSummary = () => {
   const fetchCourseData = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      
+      // Build query with proper statistics selection
+      let query = supabase
         .from('scores')
         .select(`
           course_name,
@@ -46,92 +68,28 @@ const CourseByCourseSummary = () => {
           )
         `)
 
+      // Filter by user_id if provided
+      if (userId) {
+        query = query.eq('user_id', userId)
+      }
+
+      const { data, error } = await query
+
       if (error) throw error
 
-      // Normalize course names
+      // Normalize course names for consistency
       const normalizedData = normalizeCourseData(data || [])
 
-      const courseStats = {}
-      normalizedData?.forEach(round => {
-        const course = round.course_name
-        if (!courseStats[course]) {
-          courseStats[course] = {
-            name: course,
-            rating: round.course_rating,
-            slope: round.slope_rating,
-            rounds18: 0,
-            rounds9: 0,
-            totalScore18: 0,
-            totalScore9: 0,
-            bestScore18: Infinity,
-            worstScore18: -Infinity,
-            bestScore9: Infinity,
-            worstScore9: -Infinity,
-            scores18: [],
-            scores9: [],
-            differentials18: [],
-            differentials9: [],
-            par3Avg: [],
-            par4Avg: [],
-            par5Avg: [],
-            parPercent: [],
-            bogeyPercent: [],
-            doublePlusPercent: []
-          }
-        }
-        
-        const stat = courseStats[course]
-        
-        if (round.number_of_holes === 18) {
-          stat.rounds18++
-          stat.totalScore18 += round.adjusted_gross_score
-          stat.bestScore18 = Math.min(stat.bestScore18, round.adjusted_gross_score)
-          stat.worstScore18 = Math.max(stat.worstScore18, round.adjusted_gross_score)
-          stat.scores18.push(round.adjusted_gross_score)
-          stat.differentials18.push(round.differential)
-        } else if (round.number_of_holes === 9) {
-          stat.rounds9++
-          stat.totalScore9 += round.adjusted_gross_score
-          stat.bestScore9 = Math.min(stat.bestScore9, round.adjusted_gross_score)
-          stat.worstScore9 = Math.max(stat.worstScore9, round.adjusted_gross_score)
-          stat.scores9.push(round.adjusted_gross_score)
-          stat.differentials9.push(round.differential)
-        }
-        
-        // Only include statistics for 18-hole rounds
-        if (round.number_of_holes === 18 && round.statistics?.[0]) {
-          const stats = round.statistics[0]
-          if (stats.par3s_average) stat.par3Avg.push(stats.par3s_average)
-          if (stats.par4s_average) stat.par4Avg.push(stats.par4s_average)
-          if (stats.par5s_average) stat.par5Avg.push(stats.par5s_average)
-          if (stats.pars_percent !== null) stat.parPercent.push(stats.pars_percent)
-          if (stats.bogeys_percent !== null) stat.bogeyPercent.push(stats.bogeys_percent)
-          if (stats.double_bogeys_percent !== null && stats.triple_bogeys_or_worse_percent !== null) {
-            stat.doublePlusPercent.push(stats.double_bogeys_percent + stats.triple_bogeys_or_worse_percent)
-          }
-        }
-      })
-
-      const courseArray = Object.values(courseStats).map(course => ({
-        ...course,
-        totalRounds: course.rounds18 + course.rounds9,
-        avgScore18: course.rounds18 > 0 ? course.totalScore18 / course.rounds18 : 0,
-        avgScore9: course.rounds9 > 0 ? course.totalScore9 / course.rounds9 : 0,
-        avgDifferential18: course.differentials18.length > 0 ? course.differentials18.reduce((a, b) => a + b, 0) / course.differentials18.length : 0,
-        avgDifferential9: course.differentials9.length > 0 ? course.differentials9.reduce((a, b) => a + b, 0) / course.differentials9.length : 0,
-        avgPar3: course.par3Avg.length > 0 ? course.par3Avg.reduce((a, b) => a + b, 0) / course.par3Avg.length : 0,
-        avgPar4: course.par4Avg.length > 0 ? course.par4Avg.reduce((a, b) => a + b, 0) / course.par4Avg.length : 0,
-        avgPar5: course.par5Avg.length > 0 ? course.par5Avg.reduce((a, b) => a + b, 0) / course.par5Avg.length : 0,
-        avgParPercent: course.parPercent.length > 0 ? course.parPercent.reduce((a, b) => a + b, 0) / course.parPercent.length : 0,
-        avgBogeyPercent: course.bogeyPercent.length > 0 ? course.bogeyPercent.reduce((a, b) => a + b, 0) / course.bogeyPercent.length : 0,
-        avgDoublePlusPercent: course.doublePlusPercent.length > 0 ? course.doublePlusPercent.reduce((a, b) => a + b, 0) / course.doublePlusPercent.length : 0,
-        bestScore18: course.bestScore18 === Infinity ? '-' : course.bestScore18,
-        worstScore18: course.worstScore18 === -Infinity ? '-' : course.worstScore18,
-        bestScore9: course.bestScore9 === Infinity ? '-' : course.bestScore9,
-        worstScore9: course.worstScore9 === -Infinity ? '-' : course.worstScore9
-      })).sort((a, b) => b.totalRounds - a.totalRounds)
+      // Use our aggregation service to create Course model instances
+      const courses = aggregateCourseStatistics(normalizedData)
+      
+      // Convert Course models to plain objects for state
+      // The Course model's toJSON method provides all calculated values
+      const courseArray = courses.map(course => course.toJSON())
 
       setCourseData(courseArray)
+      
+      // Select the first course (most played) by default
       if (courseArray.length > 0) {
         setSelectedCourse(courseArray[0].name)
       }
@@ -144,17 +102,31 @@ const CourseByCourseSummary = () => {
 
   const fetchHoleAverages = async (courseName) => {
     try {
-      // Only fetch hole averages for 18-hole rounds
-      const { data: scoreData, error: scoreError } = await supabase
+      // Fetch score IDs for 18-hole rounds at this course
+      let query = supabase
         .from('scores')
         .select('id')
         .eq('course_name', courseName)
-        .eq('number_of_holes', 18)
+        .eq('number_of_holes', 18) // Only analyze complete rounds
+
+      // Filter by user_id if provided
+      if (userId) {
+        query = query.eq('user_id', userId)
+      }
+
+      const { data: scoreData, error: scoreError } = await query
 
       if (scoreError) throw scoreError
 
+      // Exit early if no rounds found
+      if (!scoreData || scoreData.length === 0) {
+        setHoleAverages([])
+        return
+      }
+
       const scoreIds = scoreData.map(s => s.id)
       
+      // Fetch hole details for these rounds
       const { data: holeData, error: holeError } = await supabase
         .from('hole_details')
         .select('hole_number, par, adjusted_gross_score')
@@ -162,25 +134,9 @@ const CourseByCourseSummary = () => {
 
       if (holeError) throw holeError
 
-      const holeStats = {}
-      holeData.forEach(hole => {
-        if (!holeStats[hole.hole_number]) {
-          holeStats[hole.hole_number] = {
-            hole: hole.hole_number,
-            par: hole.par,
-            scores: []
-          }
-        }
-        holeStats[hole.hole_number].scores.push(hole.adjusted_gross_score)
-      })
-
-      const averages = Object.values(holeStats)
-        .map(hole => ({
-          ...hole,
-          avgScore: hole.scores.reduce((a, b) => a + b, 0) / hole.scores.length,
-          overUnderPar: (hole.scores.reduce((a, b) => a + b, 0) / hole.scores.length) - hole.par
-        }))
-        .sort((a, b) => a.hole - b.hole)
+      // Use our statistics service to calculate hole averages
+      // This returns data in the exact format needed for the chart
+      const averages = calculateHoleAveragesForChart(holeData)
 
       setHoleAverages(averages)
     } catch (err) {
@@ -309,7 +265,7 @@ const CourseByCourseSummary = () => {
                   </div>
                 </div>
 
-                {selectedCourseData.rounds18 > 0 && (
+                {selectedCourseData.rounds18 > 0 && selectedCourseData.avgPar3 > 0 && (
                   <div className="mb-6">
                     <h4 className="font-medium mb-2 text-gray-300">Par Type Performance (18-hole rounds)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -317,50 +273,60 @@ const CourseByCourseSummary = () => {
                       <div className="text-sm text-gray-400">Par 3 Average</div>
                       <div className="text-xl font-bold text-gray-200">{selectedCourseData.avgPar3.toFixed(2)}</div>
                       <div className="text-xs text-gray-500">
-                        +{(selectedCourseData.avgPar3 - 3).toFixed(2)} vs par
+                        +{selectedCourseData.par3VsPar.toFixed(2)} vs par
                       </div>
                     </div>
                     <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                       <div className="text-sm text-gray-400">Par 4 Average</div>
                       <div className="text-xl font-bold text-gray-200">{selectedCourseData.avgPar4.toFixed(2)}</div>
                       <div className="text-xs text-gray-500">
-                        +{(selectedCourseData.avgPar4 - 4).toFixed(2)} vs par
+                        +{selectedCourseData.par4VsPar.toFixed(2)} vs par
                       </div>
                     </div>
                     <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                       <div className="text-sm text-gray-400">Par 5 Average</div>
                       <div className="text-xl font-bold text-gray-200">{selectedCourseData.avgPar5.toFixed(2)}</div>
                       <div className="text-xs text-gray-500">
-                        +{(selectedCourseData.avgPar5 - 5).toFixed(2)} vs par
+                        +{selectedCourseData.par5VsPar.toFixed(2)} vs par
                       </div>
                     </div>
                     </div>
                   </div>
                 )}
 
-                {selectedCourseData.rounds18 > 0 && (
+                {selectedCourseData.rounds18 > 0 && (selectedCourseData.parPercent > 0 || selectedCourseData.bogeyPercent > 0 || selectedCourseData.doublePlusPercent > 0) && (
                   <div className="mb-6">
                     <h4 className="font-medium mb-2 text-gray-300">Scoring Distribution (18-hole rounds)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-green-900/30 p-3 rounded-lg border border-green-600/30">
                       <div className="text-sm text-gray-400">Pars</div>
                       <div className="text-xl font-bold text-green-400">
-                        {(selectedCourseData.avgParPercent * 100).toFixed(1)}%
+                        {(selectedCourseData.parPercent * 100).toFixed(1)}%
                       </div>
                     </div>
                     <div className="bg-yellow-900/30 p-3 rounded-lg border border-yellow-600/30">
                       <div className="text-sm text-gray-400">Bogeys</div>
                       <div className="text-xl font-bold text-yellow-400">
-                        {(selectedCourseData.avgBogeyPercent * 100).toFixed(1)}%
+                        {(selectedCourseData.bogeyPercent * 100).toFixed(1)}%
                       </div>
                     </div>
                     <div className="bg-red-900/30 p-3 rounded-lg border border-red-600/30">
                       <div className="text-sm text-gray-400">Double+</div>
                       <div className="text-xl font-bold text-red-400">
-                        {(selectedCourseData.avgDoublePlusPercent * 100).toFixed(1)}%
+                        {(selectedCourseData.doublePlusPercent * 100).toFixed(1)}%
                       </div>
                     </div>
                     </div>
+                  </div>
+                )}
+
+                {selectedCourseData.rounds18 > 0 && selectedCourseData.avgPar3 === 0 && (
+                  <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <p className="text-sm text-gray-400 text-center">
+                      Detailed statistics not available for this course. 
+                      <br />
+                      <span className="text-xs">Only total score was entered for these rounds.</span>
+                    </p>
                   </div>
                 )}
 

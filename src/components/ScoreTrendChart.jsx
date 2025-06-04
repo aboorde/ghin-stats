@@ -9,7 +9,8 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
+import { prepareScoreTrendData } from '../utils/chartDataHelpers';
+import { formatDate, formatShortDate } from '../utils/dateHelpers';
 
 /**
  * Component to display score trends over time
@@ -19,18 +20,12 @@ function ScoreTrendChart({ data }) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    // Sort scores by date and prepare data for chart
-    return data
-      .sort((a, b) => new Date(a.played_at) - new Date(b.played_at))
-      .map(score => ({
-        date: score.played_at,
-        formattedDate: format(parseISO(score.played_at), 'MMM d'),
-        score: score.adjusted_gross_score,
-        differential: score.differential,
-        par3Avg: score.statistics?.[0]?.par3s_average || null,
-        par4Avg: score.statistics?.[0]?.par4s_average || null,
-        par5Avg: score.statistics?.[0]?.par5s_average || null
-      }));
+    // Use helper to prepare and sort data
+    const prepared = prepareScoreTrendData(data);
+    return prepared.map(item => ({
+      ...item,
+      formattedDate: formatShortDate(item.date)
+    }));
   }, [data]);
 
   if (chartData.length === 0) {
@@ -58,7 +53,7 @@ function ScoreTrendChart({ data }) {
       const data = payload[0].payload;
       return (
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-xl">
-          <p className="text-gray-300 text-sm font-medium">{format(parseISO(data.date), 'MMM d, yyyy')}</p>
+          <p className="text-gray-300 text-sm font-medium">{formatDate(data.date)}</p>
           <p className="text-green-400 font-bold">Score: {data.score}</p>
           <p className="text-blue-400">Differential: {data.differential.toFixed(1)}</p>
           {data.movingAvg && (

@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format } from 'date-fns'
 import ScoreTrendChart from './ScoreTrendChart'
 import Card from './ui/Card'
 import StatCard from './ui/StatCard'
 import PageHeader from './ui/PageHeader'
 import Loading from './ui/Loading'
+import { createScoresFromData } from '../models/Score'
+import { calculateRoundStatistics } from '../services/statisticsService'
+import { formatDate } from '../utils/dateHelpers'
 import { normalizeCourseData } from '../utils/dataHelpers'
 
-const RoundByRoundView = () => {
+const RoundByRoundView = ({ userId }) => {
   const [rounds, setRounds] = useState([])
+  const [scores, setScores] = useState([]) // Score model instances
+  const [statistics, setStatistics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [sortOrder, setSortOrder] = useState('asc')
   const [filterCourse, setFilterCourse] = useState('all')
   const [courses, setCourses] = useState([])
 
   useEffect(() => {
     fetchRounds()
-  }, [sortOrder, filterCourse])
+  }, [sortOrder, filterCourse, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchRounds = async () => {
     try {
@@ -40,6 +44,11 @@ const RoundByRoundView = () => {
         `)
         .order('played_at', { ascending: sortOrder === 'asc' })
 
+      // Filter by user_id if provided
+      if (userId) {
+        query = query.eq('user_id', userId)
+      }
+
       if (filterCourse !== 'all') {
         query = query.eq('course_name', filterCourse)
       }
@@ -52,6 +61,15 @@ const RoundByRoundView = () => {
       const normalizedData = normalizeCourseData(data || [])
       setRounds(normalizedData)
       
+      // Create Score model instances
+      const scoreInstances = createScoresFromData(normalizedData)
+      setScores(scoreInstances)
+      
+      // Calculate statistics for 18-hole rounds
+      const rounds18Hole = normalizedData.filter(r => r.number_of_holes === 18)
+      const stats = calculateRoundStatistics(rounds18Hole)
+      setStatistics(stats)
+      
       const uniqueCourses = [...new Set(normalizedData?.map(r => r.course_name) || [])]
       setCourses(uniqueCourses)
     } catch (err) {
@@ -61,26 +79,6 @@ const RoundByRoundView = () => {
     }
   }
 
-  const getScoreColor = (score, holes = 18) => {
-    if (holes === 9) {
-      // Adjust thresholds for 9-hole rounds (roughly half of 18-hole thresholds)
-      if (score < 52) return 'text-green-400 font-bold'
-      if (score < 55) return 'text-yellow-400'
-      if (score < 57) return 'text-orange-400'
-      return 'text-red-400'
-    }
-    if (score < 105) return 'text-green-400 font-bold'
-    if (score < 110) return 'text-yellow-400'
-    if (score < 115) return 'text-orange-400'
-    return 'text-red-400'
-  }
-
-  const getDifferentialColor = (diff) => {
-    if (diff < 30) return 'text-green-400'
-    if (diff < 35) return 'text-yellow-400'
-    if (diff < 40) return 'text-orange-400'
-    return 'text-red-400'
-  }
 
   if (loading) {
     return <Loading message="Loading rounds..." />
@@ -94,21 +92,12 @@ const RoundByRoundView = () => {
     )
   }
 
-  // Calculate statistics for 18-hole rounds only
-  const rounds18Hole = rounds.filter(r => r.number_of_holes === 18)
-  const rounds9Hole = rounds.filter(r => r.number_of_holes === 9)
+  // Create a map for quick score lookups
+  const scoreMap = new Map(scores.map(s => [s.id, s]))
   
-  const avgScore18 = rounds18Hole.length > 0 
-    ? (rounds18Hole.reduce((sum, r) => sum + r.adjusted_gross_score, 0) / rounds18Hole.length).toFixed(1)
-    : 0
-
-  const bestScore18 = rounds18Hole.length > 0 
-    ? Math.min(...rounds18Hole.map(r => r.adjusted_gross_score))
-    : 0
-
-  const worstScore18 = rounds18Hole.length > 0 
-    ? Math.max(...rounds18Hole.map(r => r.adjusted_gross_score))
-    : 0
+  // Get 18-hole and 9-hole rounds
+  const rounds18Hole = scores.filter(s => s.numberOfHoles === 18)
+  const rounds9Hole = scores.filter(s => s.numberOfHoles === 9)
 
   return (
     <div className="space-y-6">
@@ -126,19 +115,19 @@ const RoundByRoundView = () => {
         />
         <StatCard
           label="Avg Score (18)"
-          value={avgScore18}
+          value={statistics?.averageScore || 0}
           color="green"
           icon="📊"
         />
         <StatCard
           label="Best Score (18)"
-          value={bestScore18}
+          value={statistics?.bestScore || 0}
           color="purple"
           icon="🏆"
         />
         <StatCard
           label="Worst Score (18)"
-          value={worstScore18}
+          value={statistics?.worstScore || 0}
           color="gold"
           icon="📈"
         />
@@ -189,11 +178,11 @@ const RoundByRoundView = () => {
             <Card key={round.id} className="p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <div className="text-sm text-gray-400">{format(new Date(round.played_at), 'MMM d, yyyy')}</div>
+                  <div className="text-sm text-gray-400">{formatDate(round.played_at)}</div>
                   <div className="font-medium text-gray-200">{round.course_name}</div>
                 </div>
                 <div className="text-right">
-                  <div className={`text-2xl font-bold ${getScoreColor(round.adjusted_gross_score, round.number_of_holes)}`}>
+                  <div className={`text-2xl font-bold ${scoreMap.get(round.id)?.getPerformanceLevel().color || ''}`}>
                     {round.adjusted_gross_score}
                   </div>
                   <div className={`text-xs ${round.number_of_holes === 9 ? 'text-blue-400' : 'text-gray-400'}`}>
@@ -205,7 +194,7 @@ const RoundByRoundView = () => {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Differential:</span>
-                  <span className={getDifferentialColor(round.differential)}>{round.differential}</span>
+                  <span className={scoreMap.get(round.id)?.getDifferentialColor() || ''}>{round.differential}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Birdies:</span>
@@ -281,7 +270,7 @@ const RoundByRoundView = () => {
                 return (
                   <tr key={round.id} className="hover:bg-gray-800/50 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-200">
-                      {format(new Date(round.played_at), 'MMM d, yyyy')}
+                      {formatDate(round.played_at)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
                       {round.course_name}
@@ -293,10 +282,10 @@ const RoundByRoundView = () => {
                         {round.number_of_holes}
                       </span>
                     </td>
-                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-center font-semibold ${getScoreColor(round.adjusted_gross_score, round.number_of_holes)}`}>
+                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-center font-semibold ${scoreMap.get(round.id)?.getPerformanceLevel().color || ''}`}>
                       {round.adjusted_gross_score}
                     </td>
-                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-center ${getDifferentialColor(round.differential)}`}>
+                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-center ${scoreMap.get(round.id)?.getDifferentialColor() || ''}`}>
                       {round.differential}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-blue-400 font-semibold">

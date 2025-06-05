@@ -7,6 +7,7 @@ import Profile from './components/Profile'
 import Settings from './components/Settings'
 import PublicProfilesList from './components/PublicProfilesList'
 import Loading from './components/ui/Loading'
+import { useSessionMonitor } from './hooks/useSessionMonitor'
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -21,6 +22,9 @@ const ProtectedRoute = ({ children }) => {
 // App router component
 const AppRouter = () => {
   const { user, loading } = useAuth()
+  
+  // Monitor session health for authenticated users
+  useSessionMonitor()
   
   if (loading) return <Loading />
   

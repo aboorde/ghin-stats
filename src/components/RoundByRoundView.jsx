@@ -16,13 +16,15 @@ const RoundByRoundView = ({ userId }) => {
   const [statistics, setStatistics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [sortOrder, setSortOrder] = useState('asc')
+  const [tableSortField, setTableSortField] = useState('played_at')
+  const [tableSortOrder, setTableSortOrder] = useState('desc')
   const [filterCourse, setFilterCourse] = useState('all')
+  const [filterScoreRange, setFilterScoreRange] = useState('all')
   const [courses, setCourses] = useState([])
 
   useEffect(() => {
     fetchRounds()
-  }, [sortOrder, filterCourse, userId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchRounds = async () => {
     try {
@@ -42,15 +44,11 @@ const RoundByRoundView = ({ userId }) => {
             par5s_average
           )
         `)
-        .order('played_at', { ascending: sortOrder === 'asc' })
+        .order('played_at', { ascending: true }) // Always fetch in chronological order
 
       // Filter by user_id if provided
       if (userId) {
         query = query.eq('user_id', userId)
-      }
-
-      if (filterCourse !== 'all') {
-        query = query.eq('course_name', filterCourse)
       }
 
       const { data, error } = await query
@@ -76,6 +74,74 @@ const RoundByRoundView = ({ userId }) => {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Filter and sort data for the table
+  const getFilteredAndSortedRounds = () => {
+    let filtered = [...rounds]
+    
+    // Apply course filter
+    if (filterCourse !== 'all') {
+      filtered = filtered.filter(r => r.course_name === filterCourse)
+    }
+    
+    // Apply score range filter
+    if (filterScoreRange !== 'all') {
+      filtered = filtered.filter(r => {
+        const score = r.adjusted_gross_score
+        switch (filterScoreRange) {
+          case 'under100': return score < 100
+          case '100-109': return score >= 100 && score <= 109
+          case '110-119': return score >= 110 && score <= 119
+          case 'over120': return score >= 120
+          default: return true
+        }
+      })
+    }
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal, bVal
+      
+      switch (tableSortField) {
+        case 'played_at':
+          aVal = new Date(a.played_at)
+          bVal = new Date(b.played_at)
+          break
+        case 'adjusted_gross_score':
+          aVal = a.adjusted_gross_score
+          bVal = b.adjusted_gross_score
+          break
+        case 'differential':
+          aVal = a.differential
+          bVal = b.differential
+          break
+        case 'course_name':
+          aVal = a.course_name
+          bVal = b.course_name
+          break
+        default:
+          aVal = a[tableSortField]
+          bVal = b[tableSortField]
+      }
+      
+      if (tableSortOrder === 'asc') {
+        return aVal > bVal ? 1 : -1
+      } else {
+        return aVal < bVal ? 1 : -1
+      }
+    })
+    
+    return filtered
+  }
+
+  const toggleSort = (field) => {
+    if (tableSortField === field) {
+      setTableSortOrder(tableSortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setTableSortField(field)
+      setTableSortOrder('desc')
     }
   }
 
@@ -138,41 +204,76 @@ const RoundByRoundView = ({ userId }) => {
         <ScoreTrendChart data={rounds18Hole} />
       </Card>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <label className="block text-xs sm:text-sm font-medium text-gray-400 mb-1">
-            Sort Order
-          </label>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className="w-full px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm sm:text-base"
-          >
-            <option value="desc">Newest First</option>
-            <option value="asc">Oldest First</option>
-          </select>
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 mb-6">
+        <div className="flex justify-between items-start mb-3">
+          <h3 className="text-sm font-medium text-gray-400">Table Filters & Sorting</h3>
+          <span className="text-xs text-gray-500">
+            Showing {getFilteredAndSortedRounds().length} of {rounds.length} rounds
+          </span>
         </div>
-        
-        <div className="flex-1">
-          <label className="block text-xs sm:text-sm font-medium text-gray-400 mb-1">
-            Filter by Course
-          </label>
-          <select
-            value={filterCourse}
-            onChange={(e) => setFilterCourse(e.target.value)}
-            className="w-full px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm sm:text-base"
-          >
-            <option value="all">All Courses</option>
-            {courses.map(course => (
-              <option key={course} value={course}>{course}</option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">
+              Filter by Course
+            </label>
+            <select
+              value={filterCourse}
+              onChange={(e) => setFilterCourse(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+            >
+              <option value="all">All Courses</option>
+              {courses.map(course => (
+                <option key={course} value={course}>{course}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">
+              Filter by Score Range
+            </label>
+            <select
+              value={filterScoreRange}
+              onChange={(e) => setFilterScoreRange(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+            >
+              <option value="all">All Scores</option>
+              <option value="under100">Under 100</option>
+              <option value="100-109">100 - 109</option>
+              <option value="110-119">110 - 119</option>
+              <option value="over120">120+</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1">
+              Sort By
+            </label>
+            <select
+              value={`${tableSortField}-${tableSortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-')
+                setTableSortField(field)
+                setTableSortOrder(order)
+              }}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+            >
+              <option value="played_at-desc">Date (Newest First)</option>
+              <option value="played_at-asc">Date (Oldest First)</option>
+              <option value="adjusted_gross_score-asc">Score (Low to High)</option>
+              <option value="adjusted_gross_score-desc">Score (High to Low)</option>
+              <option value="differential-asc">Differential (Low to High)</option>
+              <option value="differential-desc">Differential (High to Low)</option>
+              <option value="course_name-asc">Course (A-Z)</option>
+              <option value="course_name-desc">Course (Z-A)</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-4">
-        {rounds.map((round) => {
+        {getFilteredAndSortedRounds().map((round) => {
           const stats = round.statistics?.[0] || {}
           return (
             <Card key={round.id} className="p-4">
@@ -226,20 +327,60 @@ const RoundByRoundView = ({ userId }) => {
           <table className="min-w-full divide-y divide-gray-800">
             <thead className="bg-gray-900/50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Date
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  onClick={() => toggleSort('played_at')}
+                >
+                  <div className="flex items-center gap-1">
+                    Date
+                    {tableSortField === 'played_at' && (
+                      <span className="text-green-400">
+                        {tableSortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Course
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  onClick={() => toggleSort('course_name')}
+                >
+                  <div className="flex items-center gap-1">
+                    Course
+                    {tableSortField === 'course_name' && (
+                      <span className="text-green-400">
+                        {tableSortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Holes
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Score
+                <th 
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  onClick={() => toggleSort('adjusted_gross_score')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    Score
+                    {tableSortField === 'adjusted_gross_score' && (
+                      <span className="text-green-400">
+                        {tableSortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Differential
+                <th 
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  onClick={() => toggleSort('differential')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    Differential
+                    {tableSortField === 'differential' && (
+                      <span className="text-green-400">
+                        {tableSortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Birdies
@@ -265,7 +406,7 @@ const RoundByRoundView = ({ userId }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {rounds.map((round) => {
+              {getFilteredAndSortedRounds().map((round) => {
                 const stats = round.statistics?.[0] || {}
                 return (
                   <tr key={round.id} className="hover:bg-gray-800/50 transition-colors">

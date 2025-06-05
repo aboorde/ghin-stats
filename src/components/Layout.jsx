@@ -1,6 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import SessionStatus from './SessionStatus'
+import SessionDebug from './SessionDebug'
 
 const Layout = ({ children, hideHeader = false }) => {
   const navigate = useNavigate()
@@ -59,6 +61,11 @@ const Layout = ({ children, hideHeader = false }) => {
         {children}
       </main>
 
+      {/* Session Status Indicator */}
+      {user && <SessionStatus />}
+      
+      {/* Session Debug Panel (Development Only) */}
+      <SessionDebug />
     </div>
   )
 }

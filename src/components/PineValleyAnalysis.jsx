@@ -66,19 +66,50 @@ const HoleTooltip = ({ active, payload }) => {
   return null;
 };
 
-// Custom shape for difficulty correlation
+// Custom shape for difficulty correlation with meaningful colors and sizing
 const DifficultyDot = (props) => {
   const { cx, cy, payload } = props;
-  const color = payload.scoreVsPar > payload.expectedDifficulty ? '#ef4444' : '#10b981';
+  
+  // Color by par type
+  let color;
+  if (payload.par === 3) color = '#ef4444'; // Red for par 3s
+  else if (payload.par === 4) color = '#3b82f6'; // Blue for par 4s
+  else color = '#10b981'; // Green for par 5s
+  
+  // Size based on how much the hole deviates from expected difficulty
+  const expectedScoreVsPar = (19 - payload.handicap) * 0.1; // Rough expectation: harder holes (lower handicap) should be ~0.1-0.2 strokes harder per handicap point
+  const deviation = Math.abs(payload.scoreVsPar - expectedScoreVsPar);
+  const radius = 4 + (deviation * 8); // Base size 4, grows with deviation
+  
+  // Opacity based on sample size (more rounds = more confident)
+  const opacity = Math.min(0.9, 0.3 + (payload.totalRounds / 50));
+  
   return (
-    <circle 
-      cx={cx} 
-      cy={cy} 
-      r={6} 
-      fill={color} 
-      stroke="#fff" 
-      strokeWidth={2}
-    />
+    <g>
+      <circle 
+        cx={cx} 
+        cy={cy} 
+        r={radius}
+        fill={color}
+        fillOpacity={opacity}
+        stroke="#fff" 
+        strokeWidth={2}
+      />
+      {/* Add hole number label for outliers */}
+      {deviation > 0.5 && (
+        <text 
+          x={cx} 
+          y={cy} 
+          textAnchor="middle" 
+          dominantBaseline="middle" 
+          fill="#fff" 
+          fontSize="10" 
+          fontWeight="bold"
+        >
+          {payload.hole}
+        </text>
+      )}
+    </g>
   );
 };
 
@@ -529,7 +560,7 @@ export default function PineValleyAnalysis({ userId }) {
       <Card className="p-3 sm:p-4 md:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-6">Difficulty vs Handicap Correlation</h2>
         <p className="text-gray-400 mb-3 sm:mb-4 text-xs sm:text-sm">
-          Comparing actual difficulty (score vs par) with expected difficulty (handicap rating)
+          Analyzing how your performance on each hole compares to its handicap rating. Larger circles indicate holes that play significantly different than their handicap suggests.
         </p>
         <div className="h-48 sm:h-56 md:h-64 lg:h-96">
           <ResponsiveContainer width="100%" height="100%">
@@ -539,17 +570,27 @@ export default function PineValleyAnalysis({ userId }) {
                 dataKey="handicap" 
                 stroke={chartTheme.text}
                 tick={{ fill: chartTheme.text, fontSize: 12 }}
-                label={{ value: 'Hole Handicap (1=hardest)', position: 'insideBottom', offset: -5, fill: chartTheme.text, fontSize: 12 }}
+                label={{ value: 'Hole Handicap (1=hardest, 18=easiest)', position: 'insideBottom', offset: -5, fill: chartTheme.text, fontSize: 12 }}
                 domain={[0, 19]}
+                ticks={[1, 3, 5, 7, 9, 11, 13, 15, 17]}
               />
               <YAxis 
                 dataKey="scoreVsPar"
                 stroke={chartTheme.text}
                 tick={{ fill: chartTheme.text, fontSize: 12 }}
-                label={{ value: 'Score vs Par', angle: -90, position: 'insideLeft', fill: chartTheme.text, fontSize: 12 }}
+                label={{ value: 'Average Score vs Par', angle: -90, position: 'insideLeft', fill: chartTheme.text, fontSize: 12 }}
               />
               <Tooltip content={<HoleTooltip />} />
               <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+              {/* Add trend line showing expected difficulty */}
+              <ReferenceLine 
+                stroke="#666" 
+                strokeDasharray="8 4"
+                segment={[
+                  { x: 1, y: 1.8 },
+                  { x: 18, y: 0.2 }
+                ]}
+              />
               <Scatter 
                 name="Holes" 
                 data={holeStats} 
@@ -559,14 +600,44 @@ export default function PineValleyAnalysis({ userId }) {
             </ScatterChart>
           </ResponsiveContainer>
         </div>
-        <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm">
-          <div className="flex items-center">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 mr-2"></div>
-            <span className="text-gray-400">Playing easier than handicap suggests</span>
+        <div className="mt-3 sm:mt-4 space-y-2">
+          {/* Legend */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm">
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-red-500 mr-2"></div>
+              <span className="text-gray-400">Par 3</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-blue-500 mr-2"></div>
+              <span className="text-gray-400">Par 4</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-green-500 mr-2"></div>
+              <span className="text-gray-400">Par 5</span>
+            </div>
           </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-red-500 mr-2"></div>
-            <span className="text-gray-400">Playing harder than handicap suggests</span>
+          <div className="text-center text-xs text-gray-500">
+            Circle size indicates deviation from expected difficulty • Numbered holes are significant outliers
+          </div>
+          {/* Insights */}
+          <div className="mt-4 bg-gray-900 rounded-lg p-3 sm:p-4">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Key Insights:</h3>
+            <ul className="space-y-1 text-xs text-gray-400">
+              {holeStats.filter(h => {
+                const expectedScoreVsPar = (19 - h.handicap) * 0.1;
+                const deviation = Math.abs(h.scoreVsPar - expectedScoreVsPar);
+                return deviation > 0.5;
+              }).map(h => {
+                const expectedScoreVsPar = (19 - h.handicap) * 0.1;
+                const isHarder = h.scoreVsPar > expectedScoreVsPar;
+                return (
+                  <li key={h.hole}>
+                    • Hole {h.hole} (Hdcp {h.handicap}, Par {h.par}): Playing {isHarder ? 'harder' : 'easier'} than expected 
+                    ({h.scoreVsPar > 0 ? '+' : ''}{h.scoreVsPar.toFixed(2)} vs expected {expectedScoreVsPar > 0 ? '+' : ''}{expectedScoreVsPar.toFixed(2)})
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
       </Card>

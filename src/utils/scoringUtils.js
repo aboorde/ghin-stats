@@ -11,11 +11,11 @@
 export const calculateScoreToPar = (score, par) => {
   const diff = score - par
   
-  if (diff === 0) return { text: 'Par', color: 'text-green-400', diff }
-  if (diff === 1) return { text: 'Bogey', color: 'text-yellow-400', diff }
-  if (diff === 2) return { text: 'Double', color: 'text-orange-400', diff }
-  if (diff >= 3) return { text: `+${diff}`, color: 'text-red-400', diff }
-  if (diff === -1) return { text: 'Birdie', color: 'text-blue-400', diff }
+  if (diff === 0) return { text: 'Par', color: 'text-yellow-400', diff }
+  if (diff === 1) return { text: 'Bogey', color: 'text-orange-400', diff }
+  if (diff === 2) return { text: 'Double', color: 'text-red-400', diff }
+  if (diff >= 3) return { text: `+${diff}`, color: 'text-rose-600', diff }
+  if (diff === -1) return { text: 'Birdie', color: 'text-green-400', diff }
   if (diff === -2) return { text: 'Eagle', color: 'text-purple-400', diff }
   if (diff <= -3) return { text: `${diff}`, color: 'text-purple-400', diff }
 }
@@ -29,12 +29,12 @@ export const calculateScoreToPar = (score, par) => {
 export const getScoreBackgroundColor = (score, par) => {
   const diff = score - par
   
-  if (diff === 0) return 'bg-green-900/30 border-green-600/50'
-  if (diff === 1) return 'bg-yellow-900/30 border-yellow-600/50'
-  if (diff === 2) return 'bg-orange-900/30 border-orange-600/50'
-  if (diff >= 3) return 'bg-red-900/30 border-red-600/50'
-  if (diff === -1) return 'bg-blue-900/30 border-blue-600/50'
-  if (diff <= -2) return 'bg-purple-900/30 border-purple-600/50'
+  if (diff === 0) return 'bg-yellow-900/20 border-yellow-600/30'
+  if (diff === 1) return 'bg-orange-900/20 border-orange-600/30'
+  if (diff === 2) return 'bg-red-900/20 border-red-600/30'
+  if (diff >= 3) return 'bg-rose-900/20 border-rose-600/30'
+  if (diff === -1) return 'bg-green-900/20 border-green-600/30'
+  if (diff <= -2) return 'bg-purple-900/20 border-purple-600/30'
 }
 
 /**

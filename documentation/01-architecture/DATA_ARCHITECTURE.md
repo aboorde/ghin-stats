@@ -141,7 +141,7 @@ Located in `/src/utils/`:
 - `chartDataHelpers.js` - Chart data preparation
 - `dataHelpers.js` - General data utilities
 - `dateHelpers.js` - Date formatting and parsing
-- `handicapCalculator.js` - GHIN handicap calculations
+- `handicapCalculator.js` - Handicap calculations
 - `scoreHelpers.js` - Score-related utilities
 - `scoringUtils.js` - Scoring calculations and styling
 - `theme.js` - Chart and UI theming

@@ -367,8 +367,8 @@ array?.length || 0
 
 ## Major Implementations
 
-### 1. GHIN Handicap Calculation
-- Created `src/utils/handicapCalculator.js` with proper USGA/GHIN rules
+### 1. Handicap Calculation
+- Created `src/utils/handicapCalculator.js` with proper USGA rules
 - Implements differential selection based on round count (3-20+ rounds)
 - Applies adjustments for 3-6 rounds and 0.96 multiplier
 - Added handicap trend chart and detailed calculation display
@@ -414,7 +414,7 @@ array?.length || 0
 - Create separate migration for data linking
 - Always use IF NOT EXISTS for idempotency
 
-### 5. GHIN Calculation Edge Cases
+### 5. Handicap Calculation Edge Cases
 **Problem**: Different rules for different round counts
 **Solution**: Comprehensive switch statement handling all cases
 ```javascript
@@ -444,7 +444,7 @@ if (roundCount === 3) { numDifferentials = 1; adjustment = -2.0; }
 
 ## Files Created Today
 1. `.github/workflows/deploy-simple.yml` - Fixed deployment
-2. `src/utils/handicapCalculator.js` - GHIN calculation
+2. `src/utils/handicapCalculator.js` - Handicap calculation
 3. `user_management_migration.sql` - User tables
 4. `link_existing_data_migration.sql` - FK relationships (not applied)
 5. `rls_policies_migration.sql` - Security policies
@@ -631,7 +631,7 @@ if (!data?.length) return <Empty />
 // Then render data
 ```
 
-## GHIN HANDICAP CALCULATION
+## HANDICAP CALCULATION
 
 ### Edge Cases for Round Counts
 **Remember**: Different rules for different counts!

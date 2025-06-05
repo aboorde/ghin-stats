@@ -1,6 +1,6 @@
 # Creating Auth Users for Existing Golfer Data
 
-This guide walks you through creating Supabase Auth users and linking them to existing golfer_ids in your GHIN stats data.
+This guide walks you through creating Supabase Auth users and linking them to existing golfer_ids in your golf stats data.
 
 ## Step 1: Identify Golfers Needing User Accounts
 
@@ -134,7 +134,7 @@ INSERT INTO public.users (
     'golfer.213@example.com',
     'Your Name',
     123,             -- Your golfer_id
-    NULL,                 -- GHIN number if known
+    NULL,                 -- Player ID if known
     'Pine Valley CC',     -- Home course if known
     now(),
     now()
@@ -229,7 +229,7 @@ SELECT * FROM get_orphaned_data_summary();
 
 1. **Temporary Passwords**: Always use secure temporary passwords and require users to change them on first login
 2. **Email Verification**: Consider sending welcome emails with password reset links
-3. **GHIN Verification**: You may want to verify GHIN numbers before creating accounts
+3. **Player Verification**: You may want to verify player IDs before creating accounts
 4. **Data Privacy**: Ensure you have permission to create accounts for these golfers
 
 ## Troubleshooting

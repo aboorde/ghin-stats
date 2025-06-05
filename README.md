@@ -1,4 +1,4 @@
-# Golf Stats Dashboard
+# Scratch Pad - Golf Stats Dashboard
 
 A React + Tailwind CSS application for visualizing golf performance data from Supabase.
 
@@ -64,5 +64,4 @@ npm run preview  # Preview production build locally
 
 ## Documentation
 
-- [CLAUDE.md](./CLAUDE.md) - Development guidelines and architecture
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment instructions
+For comprehensive documentation, see the [Documentation Index](./documentation/INDEX.md)

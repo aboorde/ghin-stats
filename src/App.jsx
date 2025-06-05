@@ -47,7 +47,7 @@ const AppRouter = () => {
 
 function App() {
   // Handle both /ghin-stats and /ghin-stats/ paths
-  const basename = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats' : '';
+  const basename = window.location.pathname.includes('/scratch-pad') ? '/scratch-pad' : '';
   
   return (
     <Router basename={basename}>

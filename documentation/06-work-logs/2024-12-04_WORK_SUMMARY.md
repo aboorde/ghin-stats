@@ -1,9 +1,9 @@
 # Comprehensive Work Summary - December 4, 2024
 
 ## Overview
-Today's work focused on three major enhancements to the GHIN Stats application:
+Today's work focused on three major enhancements to the Scratch Pad application:
 1. Fixed GitHub Pages deployment issues
-2. Implemented GHIN-compliant handicap calculation
+2. Implemented USGA-compliant handicap calculation
 3. Created comprehensive user management system with Row Level Security
 
 ## 1. GitHub Pages Deployment Fix
@@ -25,7 +25,7 @@ Today's work focused on three major enhancements to the GHIN Stats application:
 - GitHub's environment protection can block deployments
 - Simple gh-pages branch deployment is more reliable for open source projects
 
-## 2. GHIN Handicap Index Implementation
+## 2. Handicap Index Implementation
 
 ### What Was Built
 Implemented proper USGA/GHIN handicap calculation formula in the Pine Valley Analysis tab.

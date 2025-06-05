@@ -121,7 +121,7 @@ Checks your schema and creates appropriate RLS policies based on whether tables 
 ## Security Considerations
 
 - RLS policies ensure data access is properly restricted
-- No sensitive data (email, GHIN number) is shown for public profiles unless explicitly allowed
+- No sensitive data (email, player ID) is shown for public profiles unless explicitly allowed
 - Users have granular control over what data is shared
 - Anonymous users can only read data, not modify anything
 

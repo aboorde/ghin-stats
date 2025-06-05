@@ -1,6 +1,6 @@
-# GHIN Stats Documentation Index
+# Scratch Pad Documentation Index
 
-Welcome to the GHIN Stats documentation. This comprehensive guide covers all aspects of the golf statistics application built with React and Supabase.
+Welcome to the Scratch Pad documentation. This comprehensive guide covers all aspects of the golf statistics application built with React and Supabase.
 
 ## 📁 Documentation Structure
 
@@ -60,7 +60,7 @@ New to the project? Start here:
 
 ## 🏗️ Architecture Overview
 
-The GHIN Stats application follows these architectural principles:
+The Scratch Pad application follows these architectural principles:
 
 - **Frontend**: React with functional components and hooks
 - **Styling**: Tailwind CSS with utility-first approach
@@ -77,7 +77,7 @@ The GHIN Stats application follows these architectural principles:
 - **Course Summary**: Performance metrics by course with hole-specific analysis
 - **Year by Year Analysis**: Historical trends and seasonal patterns
 - **Public Profiles**: Share golf statistics publicly with privacy controls
-- **GHIN Handicap Calculation**: Accurate handicap index calculation following USGA rules
+- **Handicap Calculation**: Accurate handicap index calculation following USGA rules
 
 ## 🔒 Security
 

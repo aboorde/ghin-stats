@@ -12,9 +12,9 @@ const Loading = ({ message = 'Loading...' }) => {
           <div className="absolute bottom-3 left-3 w-1.5 h-1.5 bg-gray-300 rounded-full" />
         </div>
         
-        {/* Green glow effect */}
+        {/* Pink glow effect */}
         <div className="absolute inset-0 animate-ping">
-          <div className="w-16 h-16 bg-green-500 rounded-full opacity-20" />
+          <div className="w-16 h-16 bg-pink-500 rounded-full opacity-30" />
         </div>
       </div>
       

@@ -90,7 +90,7 @@ Centralized all magic numbers and configuration:
 **Golf Constants**
 - Standard par values
 - Performance thresholds
-- GHIN handicap rules
+- USGA handicap rules
 - Chart color schemes
 - Pine Valley course data
 - Default filter values

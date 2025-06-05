@@ -1,5 +1,5 @@
 /**
- * GHIN Handicap Index Calculator
+ * Handicap Index Calculator
  * 
  * The USGA Handicap Index is calculated using the following steps:
  * 1. Use the lowest handicap differentials from recent rounds

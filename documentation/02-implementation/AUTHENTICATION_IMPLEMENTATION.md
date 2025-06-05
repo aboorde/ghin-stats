@@ -29,7 +29,7 @@ Successfully implemented authentication flow with Supabase Auth, allowing users 
   - Link to browse public profiles
 
 - **Profile.jsx** - User profile page
-  - Displays user info (name, GHIN, home course, handicap)
+  - Displays user info (name, player ID, home course, handicap)
   - Navigation between golf stat views
   - Edit profile button for own profile
   - Respects privacy settings

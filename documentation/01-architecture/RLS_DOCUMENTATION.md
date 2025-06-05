@@ -1,7 +1,7 @@
 # Row Level Security (RLS) Documentation
 
 ## Overview
-Row Level Security has been successfully implemented across all tables in the GHIN Stats application. This ensures that users can only access their own data and view public data according to privacy settings.
+Row Level Security has been successfully implemented across all tables in the Scratch Pad application. This ensures that users can only access their own data and view public data according to privacy settings.
 
 ## RLS Status by Table
 

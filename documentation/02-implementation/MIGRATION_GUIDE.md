@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers the secure data migration system for assigning ownership of existing GHIN golf data to users. The system provides comprehensive tracking, rollback capabilities, and orphaned data management.
+This guide covers the secure data migration system for assigning ownership of existing golf data to users. The system provides comprehensive tracking, rollback capabilities, and orphaned data management.
 
 ## Migration Components
 

@@ -137,9 +137,9 @@ const Profile = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-900">
+      <div className="min-h-screen">
         {/* Profile Header */}
-        <div className="bg-gray-800 border-b border-gray-700">
+        <div className="bg-slate-900/90 backdrop-blur-sm border-b border-pink-900/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex justify-between items-center">
               <div>
@@ -148,13 +148,13 @@ const Profile = () => {
                 </h1>
                 <div className="mt-2 flex items-center space-x-4 text-gray-400">
                   {profile.ghin_number && (
-                    <span>GHIN: {profile.ghin_number}</span>
+                    <span>ID: {profile.ghin_number}</span>
                   )}
                   {profile.home_course_name && (
                     <span>Home: {profile.home_course_name}</span>
                   )}
                   {(isOwnProfile || profile.display_handicap) && handicapIndex !== null && handicapIndex !== undefined && (
-                    <span className="text-emerald-400 font-medium">
+                    <span className="text-pink-400 font-medium">
                       Index: {handicapIndex.toFixed(1)}
                     </span>
                   )}
@@ -164,7 +164,7 @@ const Profile = () => {
                 {!user && (
                   <button
                     onClick={() => navigate('/profiles/public')}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    className="px-4 py-2 bg-slate-800/80 text-white rounded-lg hover:bg-pink-900/30 border border-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
                   >
                     ← Back to Profiles
                   </button>
@@ -172,7 +172,7 @@ const Profile = () => {
                 {isOwnProfile && (
                   <button
                     onClick={() => navigate('/settings')}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    className="px-4 py-2 bg-slate-800/80 text-white rounded-lg hover:bg-pink-900/30 border border-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
                   >
                     Edit Profile
                   </button>
@@ -183,7 +183,7 @@ const Profile = () => {
         </div>
 
         {/* Navigation */}
-        <div className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
+        <div className="bg-slate-900/90 backdrop-blur-sm border-b border-pink-900/30 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Mobile menu button and current view */}
             <div className="flex items-center justify-between lg:hidden py-3">
@@ -194,7 +194,7 @@ const Profile = () => {
               </div>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-pink-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-pink-500"
               >
                 <span className="sr-only">Open menu</span>
                 {mobileMenuOpen ? (
@@ -212,7 +212,7 @@ const Profile = () => {
             {/* Mobile dropdown menu */}
             {mobileMenuOpen && (
               <div className="lg:hidden pb-3">
-                <div className="border-t border-gray-700 pt-3">
+                <div className="border-t border-pink-900/30 pt-3">
                   {navigationItems.map((item) => (
                     <button
                       key={item.id}

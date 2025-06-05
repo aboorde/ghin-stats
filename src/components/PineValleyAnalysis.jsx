@@ -357,7 +357,7 @@ export default function PineValleyAnalysis({ userId }) {
 
       setParPerformance(parPerformanceData);
 
-      // Calculate GHIN Handicap Index
+      // Calculate Handicap Index
       const details = getHandicapDetails(roundsData || []);
       setHandicapDetails(details);
 
@@ -445,7 +445,7 @@ export default function PineValleyAnalysis({ userId }) {
         </Card>
         
         <Card className="p-4 sm:p-6">
-          <h3 className="text-gray-400 text-sm mb-2">GHIN Handicap Index</h3>
+          <h3 className="text-gray-400 text-sm mb-2">Handicap Index</h3>
           <p className="text-2xl sm:text-3xl font-bold text-purple-400">
             {handicapDetails?.handicapIndex !== null ? handicapDetails.handicapIndex.toFixed(1) : 'N/A'}
           </p>
@@ -816,10 +816,10 @@ export default function PineValleyAnalysis({ userId }) {
         </div>
       </Card>
 
-      {/* GHIN Handicap Details */}
+      {/* Handicap Details */}
       {handicapDetails && handicapDetails.handicapIndex !== null && (
         <Card className="p-3 sm:p-4 md:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">GHIN Handicap Index Details</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">Handicap Index Details</h2>
           
           {/* Handicap Trend Chart */}
           {handicapTrend.length > 0 && (
@@ -886,7 +886,7 @@ export default function PineValleyAnalysis({ userId }) {
                 <span className="text-white font-semibold">Yes</span>
               </div>
               <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
-                <span className="text-gray-400">GHIN Handicap Index:</span>
+                <span className="text-gray-400">Handicap Index:</span>
                 <span className="text-purple-400 font-bold text-lg">{handicapDetails.handicapIndex.toFixed(1)}</span>
               </div>
             </div>

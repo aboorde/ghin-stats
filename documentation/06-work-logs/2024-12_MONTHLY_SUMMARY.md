@@ -1,4 +1,4 @@
-# Complete Work Summary - GHIN Stats Application (December 2024)
+# Complete Work Summary - Scratch Pad Application (December 2024)
 
 ## Overview
 Transformed a static golf statistics dashboard into a full-featured authenticated application with user management, profile pages, and privacy controls.
@@ -15,9 +15,9 @@ Transformed a static golf statistics dashboard into a full-featured authenticate
     publish_dir: ./dist
 ```
 
-### 2. GHIN Handicap Calculator
+### 2. Handicap Calculator
 **Created**: `src/utils/handicapCalculator.js`
-- Implements official USGA/GHIN calculation rules
+- Implements official USGA calculation rules
 - Handles 3-20+ rounds with proper differential selection
 - Applies adjustments based on round count
 - 0.96 multiplier for final handicap index

@@ -141,7 +141,7 @@ User profiles linked to auth.users
 - `id` (UUID) - References auth.users.id
 - `golfer_id` (BIGINT) - Links to scores.golfer_id
 - `display_name` (TEXT) - Public display name
-- `handicap_index` (DECIMAL) - GHIN handicap index
+- `handicap_index` (DECIMAL) - Handicap index
 - `is_public` (BOOLEAN) - Whether profile is publicly visible
 - `display_preferences` (JSONB) - User display settings
 

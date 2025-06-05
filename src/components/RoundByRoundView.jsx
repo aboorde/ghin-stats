@@ -9,8 +9,18 @@ import { createScoresFromData } from '../models/Score'
 import { calculateRoundStatistics } from '../services/statisticsService'
 import { formatDate } from '../utils/dateHelpers'
 import { normalizeCourseData } from '../utils/dataHelpers'
+import { theme } from '../utils/theme'
 
 const RoundByRoundView = ({ userId }) => {
+  // Add custom select dropdown styling
+  const selectStyles = `
+    w-full px-4 py-2.5 bg-slate-950/80 border border-pink-900/30 rounded-lg 
+    text-slate-100 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 
+    focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 
+    text-sm hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer 
+    bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] 
+    bg-[position:right_1rem_center] bg-no-repeat pr-10
+  `
   const [rounds, setRounds] = useState([])
   const [scores, setScores] = useState([]) // Score model instances
   const [statistics, setStatistics] = useState(null)
@@ -152,9 +162,10 @@ const RoundByRoundView = ({ userId }) => {
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <div className="text-red-400 text-xl">⚠️ Error: {error}</div>
-      </div>
+      <Card variant="elevated" className="text-center py-12 mx-auto max-w-md">
+        <div className="text-red-400 text-xl font-semibold mb-2">⚠️ Error Loading Rounds</div>
+        <div className="text-pink-300/60">{error}</div>
+      </Card>
     )
   }
 
@@ -166,7 +177,23 @@ const RoundByRoundView = ({ userId }) => {
   const rounds9Hole = scores.filter(s => s.numberOfHoles === 9)
 
   return (
-    <div className="space-y-6">
+    <>
+      <style jsx>{`
+        /* Custom option styling for dark theme */
+        option {
+          background-color: #020617;
+          color: #f1f5f9;
+          padding: 0.5rem;
+        }
+        option:hover {
+          background-color: #1e293b;
+        }
+        /* Smooth animations for all transitions */
+        * {
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+      `}</style>
+      <div className="space-y-6 animate-fadeIn">
       <PageHeader 
         title="Round by Round Performance" 
         subtitle="Track your scoring trends and detailed statistics"
@@ -199,27 +226,30 @@ const RoundByRoundView = ({ userId }) => {
         />
       </div>
 
-      <Card className="p-6 mb-6">
-        <h3 className="text-xl font-semibold mb-4 text-gray-200">Score Trend</h3>
+      <Card variant="elevated" className="p-6 mb-6 bg-gradient-to-br from-slate-900/95 to-pink-950/10">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold bg-gradient-to-r from-pink-400 to-pink-600 bg-clip-text text-transparent">Score Trend</h3>
+          <span className="text-xs text-pink-300/50 font-medium uppercase tracking-wider">18-Hole Rounds Only</span>
+        </div>
         <ScoreTrendChart data={rounds18Hole} />
       </Card>
 
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 mb-6">
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="text-sm font-medium text-gray-400">Table Filters & Sorting</h3>
-          <span className="text-xs text-gray-500">
+      <Card variant="elevated" className="p-6 mb-6 bg-gradient-to-br from-slate-900/95 to-pink-950/10 border-pink-900/40">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-lg font-semibold bg-gradient-to-r from-pink-400 to-pink-600 bg-clip-text text-transparent">Table Filters & Sorting</h3>
+          <span className="text-sm text-pink-400/60 font-medium">
             Showing {getFilteredAndSortedRounds().length} of {rounds.length} rounds
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-pink-300/70 mb-2 uppercase tracking-wider">
               Filter by Course
             </label>
             <select
               value={filterCourse}
               onChange={(e) => setFilterCourse(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+              className="w-full px-4 py-2.5 bg-slate-950/80 border border-pink-900/30 rounded-lg text-slate-100 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 text-sm hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] bg-[position:right_1rem_center] bg-no-repeat pr-10"
             >
               <option value="all">All Courses</option>
               {courses.map(course => (
@@ -229,13 +259,13 @@ const RoundByRoundView = ({ userId }) => {
           </div>
           
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-pink-300/70 mb-2 uppercase tracking-wider">
               Filter by Score Range
             </label>
             <select
               value={filterScoreRange}
               onChange={(e) => setFilterScoreRange(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+              className="w-full px-4 py-2.5 bg-slate-950/80 border border-pink-900/30 rounded-lg text-slate-100 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 text-sm hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] bg-[position:right_1rem_center] bg-no-repeat pr-10"
             >
               <option value="all">All Scores</option>
               <option value="under100">Under 100</option>
@@ -246,7 +276,7 @@ const RoundByRoundView = ({ userId }) => {
           </div>
           
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-pink-300/70 mb-2 uppercase tracking-wider">
               Sort By
             </label>
             <select
@@ -256,7 +286,7 @@ const RoundByRoundView = ({ userId }) => {
                 setTableSortField(field)
                 setTableSortOrder(order)
               }}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+              className="w-full px-4 py-2.5 bg-slate-950/80 border border-pink-900/30 rounded-lg text-slate-100 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 text-sm hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] bg-[position:right_1rem_center] bg-no-repeat pr-10"
             >
               <option value="played_at-desc">Date (Newest First)</option>
               <option value="played_at-asc">Date (Oldest First)</option>
@@ -269,24 +299,24 @@ const RoundByRoundView = ({ userId }) => {
             </select>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-4">
         {getFilteredAndSortedRounds().map((round) => {
           const stats = round.statistics?.[0] || {}
           return (
-            <Card key={round.id} className="p-4">
+            <Card key={round.id} variant="elevated" className="p-5 hover:shadow-pink-500/20 transition-all duration-300">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <div className="text-sm text-gray-400">{formatDate(round.played_at)}</div>
-                  <div className="font-medium text-gray-200">{round.course_name}</div>
+                  <div className="text-sm text-pink-400/60 font-medium">{formatDate(round.played_at)}</div>
+                  <div className="font-semibold text-slate-100">{round.course_name}</div>
                 </div>
                 <div className="text-right">
                   <div className={`text-2xl font-bold ${scoreMap.get(round.id)?.getPerformanceLevel().color || ''}`}>
                     {round.adjusted_gross_score}
                   </div>
-                  <div className={`text-xs ${round.number_of_holes === 9 ? 'text-blue-400' : 'text-gray-400'}`}>
+                  <div className={`text-xs font-medium ${round.number_of_holes === 9 ? 'text-blue-400' : 'text-pink-300/60'}`}>
                     {round.number_of_holes} holes
                   </div>
                 </div>
@@ -294,23 +324,23 @@ const RoundByRoundView = ({ userId }) => {
               
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Differential:</span>
+                  <span className="text-pink-300/60">Differential:</span>
                   <span className={scoreMap.get(round.id)?.getDifferentialColor() || ''}>{round.differential}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Birdies:</span>
+                  <span className="text-pink-300/60">Birdies:</span>
                   <span className="text-blue-400 font-semibold">
                     {Math.round((stats.birdies_or_better_percent || 0) * round.number_of_holes)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Pars:</span>
+                  <span className="text-pink-300/60">Pars:</span>
                   <span className="text-green-400">
                     {Math.round((stats.pars_percent || 0) * round.number_of_holes)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Bogeys:</span>
+                  <span className="text-pink-300/60">Bogeys:</span>
                   <span className="text-yellow-400">
                     {Math.round((stats.bogeys_percent || 0) * round.number_of_holes)}
                   </span>
@@ -322,103 +352,103 @@ const RoundByRoundView = ({ userId }) => {
       </div>
 
       {/* Desktop Table View */}
-      <Card className="overflow-hidden hidden md:block">
+      <Card variant="elevated" className="overflow-hidden hidden md:block p-0 bg-gradient-to-br from-slate-900/95 to-pink-950/10">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-800">
-            <thead className="bg-gray-900/50">
+          <table className="min-w-full divide-y divide-pink-900/20">
+            <thead className="bg-slate-950/60 backdrop-blur-sm">
               <tr>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  className="px-4 py-3 text-left text-xs font-medium text-pink-300/70 uppercase tracking-wider cursor-pointer hover:text-pink-400 transition-all duration-200"
                   onClick={() => toggleSort('played_at')}
                 >
                   <div className="flex items-center gap-1">
                     Date
                     {tableSortField === 'played_at' && (
-                      <span className="text-green-400">
+                      <span className="text-pink-500">
                         {tableSortOrder === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  className="px-4 py-3 text-left text-xs font-medium text-pink-300/70 uppercase tracking-wider cursor-pointer hover:text-pink-400 transition-all duration-200"
                   onClick={() => toggleSort('course_name')}
                 >
                   <div className="flex items-center gap-1">
                     Course
                     {tableSortField === 'course_name' && (
-                      <span className="text-green-400">
+                      <span className="text-pink-500">
                         {tableSortOrder === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider">
                   Holes
                 </th>
                 <th 
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider cursor-pointer hover:text-pink-400 transition-all duration-200"
                   onClick={() => toggleSort('adjusted_gross_score')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     Score
                     {tableSortField === 'adjusted_gross_score' && (
-                      <span className="text-green-400">
+                      <span className="text-pink-500">
                         {tableSortOrder === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 transition-colors"
+                  className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider cursor-pointer hover:text-pink-400 transition-all duration-200"
                   onClick={() => toggleSort('differential')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     Differential
                     {tableSortField === 'differential' && (
-                      <span className="text-green-400">
+                      <span className="text-pink-500">
                         {tableSortOrder === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider">
                   Birdies
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider">
                   Pars
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider">
                   Bogeys
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider">
                   Double+
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider hidden md:table-cell">
                   Par 3 Avg
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider hidden md:table-cell">
                   Par 4 Avg
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                <th className="px-4 py-3 text-center text-xs font-medium text-pink-300/70 uppercase tracking-wider hidden md:table-cell">
                   Par 5 Avg
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-pink-900/10">
               {getFilteredAndSortedRounds().map((round) => {
                 const stats = round.statistics?.[0] || {}
                 return (
-                  <tr key={round.id} className="hover:bg-gray-800/50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-200">
+                  <tr key={round.id} className="hover:bg-pink-900/10 transition-all duration-200 backdrop-blur-sm">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-100">
                       {formatDate(round.played_at)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-pink-300/70">
                       {round.course_name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                        round.number_of_holes === 9 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-700 text-gray-300'
+                        round.number_of_holes === 9 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-slate-800/50 text-pink-300/60 border border-pink-900/20'
                       }`}>
                         {round.number_of_holes}
                       </span>
@@ -457,7 +487,8 @@ const RoundByRoundView = ({ userId }) => {
           </table>
         </div>
       </Card>
-    </div>
+      </div>
+    </>
   )
 }
 

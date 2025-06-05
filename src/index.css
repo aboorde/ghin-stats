@@ -1,6 +1,24 @@
 @import "tailwindcss";
 
 /* Scratch Pad - Base dark theme settings */
+@layer utilities {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
+  }
+}
+
+/* Scratch Pad - Base dark theme settings */
 @layer base {
   body {
     @apply bg-slate-950 text-slate-100;

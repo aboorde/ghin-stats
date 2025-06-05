@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { 
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts'
 import { 
@@ -20,6 +20,7 @@ import {
 import PageHeader from './ui/PageHeader'
 import Card from './ui/Card'
 import Loading from './ui/Loading'
+import { MonthlyPerformanceChart } from './molecules'
 import { chartTheme } from '../utils/theme'
 
 const YearByYearAnalysis = ({ userId }) => {
@@ -233,28 +234,10 @@ const YearByYearAnalysis = ({ userId }) => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h4 className="font-medium mb-3 text-gray-300">Monthly Performance</h4>
-                <div className="h-48 sm:h-56 md:h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridColor} />
-                    <XAxis 
-                      dataKey="month" 
-                      tick={{ fill: chartTheme.textColor }}
-                      stroke={chartTheme.gridColor}
-                    />
-                    <YAxis 
-                      domain={[100, 120]} 
-                      tick={{ fill: chartTheme.textColor }}
-                      stroke={chartTheme.gridColor}
-                    />
-                    <Tooltip 
-                      contentStyle={chartTheme.tooltipStyle}
-                      itemStyle={{ color: chartTheme.textColor }}
-                    />
-                      <Bar dataKey="avgScore" fill="#10b981" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <MonthlyPerformanceChart 
+                  monthlyData={monthlyChartData}
+                  yearAverage={selectedYearAnalysis.avgScore}
+                />
               </div>
 
               <div>

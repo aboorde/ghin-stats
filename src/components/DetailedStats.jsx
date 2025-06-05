@@ -1,5 +1,8 @@
 import React, { useMemo } from 'react';
 import { calculateDetailedStatistics, formatDetailedStatistics } from '../services/detailedStatsService';
+import { MetricCard, SectionHeader } from './atoms';
+import { MetricGrid, EmptyState } from './molecules';
+import Card from './ui/Card';
 
 /**
  * DetailedStats Component
@@ -28,17 +31,20 @@ function DetailedStats({ scores, summaryStats }) {
 
   // Don't render if no data available
   if (!detailedStats) {
-    return null;
+    return <EmptyState message="No detailed statistics available" />;
   }
 
   return (
     <div className="space-y-6">
-      <h3 className="text-2xl font-bold text-gray-200">Detailed Analysis</h3>
+      <SectionHeader 
+        title="Detailed Analysis" 
+        size="lg"
+      />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Score Distribution Card */}
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-          <h4 className="text-lg font-semibold text-gray-300 mb-4">Score Distribution</h4>
+        <Card className="p-6">
+          <SectionHeader title="Score Distribution" size="sm" />
           <div className="space-y-3">
             {detailedStats.scoreDistribution.map((item) => (
               <div key={item.range} className="space-y-1">
@@ -55,86 +61,69 @@ function DetailedStats({ scores, summaryStats }) {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
         {/* Performance Trends Card */}
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-          <h4 className="text-lg font-semibold text-gray-300 mb-4">Performance Trends</h4>
+        <Card className="p-6">
+          <SectionHeader title="Performance Trends" size="sm" />
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">Recent 10 Rounds Avg:</span>
-              <span className="text-lg font-medium text-gray-200">{detailedStats.recentAverage}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">Improvement:</span>
-              <span className={`text-lg font-medium ${detailedStats.improvement.isImproving ? 'text-green-400' : 'text-red-400'}`}>
-                {detailedStats.improvement.display}
-              </span>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Consistency:</span>
-                <span className={`text-lg font-medium ${detailedStats.consistency.rating.color}`}>
-                  {detailedStats.consistency.display}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 text-right">
-                {detailedStats.consistency.rating.description}
-              </div>
-            </div>
+            <MetricCard
+              label="Recent 10 Rounds Avg"
+              value={detailedStats.recentAverage}
+              theme="gray"
+              size="sm"
+            />
+            <MetricCard
+              label="Improvement"
+              value={detailedStats.improvement.display}
+              theme={detailedStats.improvement.isImproving ? 'green' : 'red'}
+              size="sm"
+              icon={detailedStats.improvement.isImproving ? '📈' : '📉'}
+            />
+            <MetricCard
+              label="Consistency"
+              value={detailedStats.consistency.display}
+              subValue={detailedStats.consistency.rating.description}
+              theme={
+                detailedStats.consistency.rating.color.includes('green') ? 'green' :
+                detailedStats.consistency.rating.color.includes('yellow') ? 'yellow' :
+                'red'
+              }
+              size="sm"
+            />
           </div>
-        </div>
+        </Card>
 
         {/* Par Type Performance Card */}
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-          <h4 className="text-lg font-semibold text-gray-300 mb-4">Par Type Performance</h4>
+        <Card className="p-6">
+          <SectionHeader title="Par Type Performance" size="sm" />
           <div className="space-y-4">
-            {/* Par 3 */}
-            <div className="pb-3 border-b border-gray-700">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Par 3 Average:</span>
-                <span className="text-lg font-medium text-gray-200">
-                  {detailedStats.parTypePerformance.par3.display}
-                </span>
-              </div>
-              {detailedStats.parTypePerformance.par3.vsPar && (
-                <div className="text-xs text-gray-500 text-right mt-1">
-                  {detailedStats.parTypePerformance.par3.vsPar} over par
-                </div>
-              )}
-            </div>
-            
-            {/* Par 4 */}
-            <div className="pb-3 border-b border-gray-700">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Par 4 Average:</span>
-                <span className="text-lg font-medium text-gray-200">
-                  {detailedStats.parTypePerformance.par4.display}
-                </span>
-              </div>
-              {detailedStats.parTypePerformance.par4.vsPar && (
-                <div className="text-xs text-gray-500 text-right mt-1">
-                  {detailedStats.parTypePerformance.par4.vsPar} over par
-                </div>
-              )}
-            </div>
-            
-            {/* Par 5 */}
-            <div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Par 5 Average:</span>
-                <span className="text-lg font-medium text-gray-200">
-                  {detailedStats.parTypePerformance.par5.display}
-                </span>
-              </div>
-              {detailedStats.parTypePerformance.par5.vsPar && (
-                <div className="text-xs text-gray-500 text-right mt-1">
-                  {detailedStats.parTypePerformance.par5.vsPar} over par
-                </div>
-              )}
-            </div>
+            <MetricCard
+              label="Par 3 Average"
+              value={detailedStats.parTypePerformance.par3.display}
+              trend={detailedStats.parTypePerformance.par3.vsPar ? `${detailedStats.parTypePerformance.par3.vsPar} over par` : undefined}
+              theme="gray"
+              size="sm"
+              icon="⛳"
+            />
+            <MetricCard
+              label="Par 4 Average"
+              value={detailedStats.parTypePerformance.par4.display}
+              trend={detailedStats.parTypePerformance.par4.vsPar ? `${detailedStats.parTypePerformance.par4.vsPar} over par` : undefined}
+              theme="gray"
+              size="sm"
+              icon="🏌️"
+            />
+            <MetricCard
+              label="Par 5 Average"
+              value={detailedStats.parTypePerformance.par5.display}
+              trend={detailedStats.parTypePerformance.par5.vsPar ? `${detailedStats.parTypePerformance.par5.vsPar} over par` : undefined}
+              theme="gray"
+              size="sm"
+              icon="🦅"
+            />
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

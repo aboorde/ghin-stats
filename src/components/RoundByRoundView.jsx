@@ -9,18 +9,8 @@ import { createScoresFromData } from '../models/Score'
 import { calculateRoundStatistics } from '../services/statisticsService'
 import { formatDate } from '../utils/dateHelpers'
 import { normalizeCourseData } from '../utils/dataHelpers'
-import { theme } from '../utils/theme'
 
 const RoundByRoundView = ({ userId }) => {
-  // Add custom select dropdown styling
-  const selectStyles = `
-    w-full px-4 py-2.5 bg-slate-950/80 border border-pink-900/30 rounded-lg 
-    text-slate-100 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 
-    focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 
-    text-sm hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer 
-    bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] 
-    bg-[position:right_1rem_center] bg-no-repeat pr-10
-  `
   const [rounds, setRounds] = useState([])
   const [scores, setScores] = useState([]) // Score model instances
   const [statistics, setStatistics] = useState(null)

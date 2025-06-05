@@ -11,6 +11,7 @@ import YearByYearAnalysis from './YearByYearAnalysis'
 import PineValleyAnalysis from './PineValleyAnalysis'
 import Loading from './ui/Loading'
 import Card from './ui/Card'
+import ProfileEmptyState from './molecules/ProfileEmptyState'
 
 // Component to show when data is restricted
 const RestrictedView = ({ type }) => (
@@ -27,19 +28,20 @@ const RestrictedView = ({ type }) => (
 const Profile = () => {
   const { userId } = useParams()
   const navigate = useNavigate()
-  const { user, profile: currentUserProfile } = useAuth()
+  const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [handicapIndex, setHandicapIndex] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeView, setActiveView] = useState('rounds')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [hasRounds, setHasRounds] = useState(true) // Default to true to avoid flash
 
   const isOwnProfile = user?.id === userId
 
   useEffect(() => {
     fetchUserProfile()
-  }, [userId])
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchUserProfile = async () => {
     try {
@@ -69,6 +71,14 @@ const Profile = () => {
       }
 
       setProfile(profileData)
+      
+      // Check if user has any rounds
+      const { count } = await supabase
+        .from('scores')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+      
+      setHasRounds(count > 0)
       
       // Calculate handicap index if not stored
       if (profileData.handicap_index === null || profileData.handicap_index === undefined) {
@@ -182,9 +192,16 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="bg-slate-900/90 backdrop-blur-sm border-b border-pink-900/30 sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Show empty state if user is viewing their own profile and has no rounds */}
+        {isOwnProfile && !hasRounds ? (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <ProfileEmptyState onEditProfile={() => navigate('/settings')} />
+          </div>
+        ) : (
+          <>
+            {/* Navigation */}
+            <div className="bg-slate-900/90 backdrop-blur-sm border-b border-pink-900/30 sticky top-0 z-10">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Mobile menu button and current view */}
             <div className="flex items-center justify-between lg:hidden py-3">
               <div>
@@ -252,10 +269,12 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {viewComponents[activeView]}
-        </div>
+            {/* Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {viewComponents[activeView]}
+            </div>
+          </>
+        )}
       </div>
     </Layout>
   )

@@ -30,4 +30,28 @@ export default [{ ignores: ['dist'] }, {
       { allowConstantExport: true },
     ],
   },
+}, {
+  files: ['**/*.test.{js,jsx}', '**/__tests__/**/*.{js,jsx}', 'jest.setup.js', 'src/__mocks__/**/*.js'],
+  languageOptions: {
+    globals: {
+      ...globals.jest,
+      describe: 'readonly',
+      it: 'readonly',
+      expect: 'readonly',
+      beforeEach: 'readonly',
+      afterEach: 'readonly',
+      beforeAll: 'readonly',
+      afterAll: 'readonly',
+      jest: 'readonly',
+      global: 'readonly',
+    },
+  },
+}, {
+  files: ['scripts/**/*.js'],
+  languageOptions: {
+    globals: {
+      ...globals.node,
+      process: 'readonly',
+    },
+  },
 }, ...storybook.configs["flat/recommended"]];

@@ -6,7 +6,7 @@ import SessionDebug from './SessionDebug'
 
 const Layout = ({ children, hideHeader = false }) => {
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-pink-950/20">
@@ -40,11 +40,10 @@ const Layout = ({ children, hideHeader = false }) => {
               <div className="flex items-center gap-4">
                 {user && (
                   <button
-                    onClick={async () => {
-                      await signOut()
-                      navigate('/')
+                    onClick={() => {
+                      navigate('/logout')
                     }}
-                    className="text-xs sm:text-sm text-gray-400 hover:text-pink-400 transition-colors duration-200"
+                    className="text-xs sm:text-sm text-gray-400 hover:text-pink-400 transition-colors duration-200 font-medium"
                   >
                     Sign Out
                   </button>

@@ -447,12 +447,27 @@ const Settings = () => {
             {/* Danger Zone */}
             <div className="px-6 py-4 border-t border-pink-900/30 bg-red-950/10">
               <h3 className="text-lg font-semibold text-red-400 mb-4">Danger Zone</h3>
-              <button
-                onClick={handleSignOut}
-                className="px-5 py-2.5 bg-gradient-to-br from-red-600 to-red-800 text-white font-medium rounded-lg shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-500 hover:to-red-700 transition-all duration-200"
-              >
-                Sign Out
-              </button>
+              <div className="space-y-4">
+                <div>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-br from-pink-600 to-pink-800 text-white font-medium rounded-lg shadow-lg shadow-pink-500/25 hover:shadow-xl hover:shadow-pink-500/40 hover:from-pink-500 hover:to-pink-700 transition-all duration-200"
+                  >
+                    Sign Out
+                  </button>
+                  <p className="text-xs text-pink-300/50 mt-2">Regular sign out - you can sign back in anytime</p>
+                </div>
+                
+                <div>
+                  <button
+                    onClick={() => navigate('/logout')}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-br from-red-600 to-red-800 text-white font-medium rounded-lg shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-500 hover:to-red-700 transition-all duration-200"
+                  >
+                    Force Logout (Clear All Data)
+                  </button>
+                  <p className="text-xs text-red-300/50 mt-2">⚠️ Completely clear all session data and force re-authentication</p>
+                </div>
+              </div>
             </div>
           </Card>
         </div>

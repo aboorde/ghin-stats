@@ -97,11 +97,50 @@ export const AuthProvider = ({ children }) => {
   //   return data
   // }
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('Sign out error:', error)
-      throw error
+  const signOut = async (forceLogout = false) => {
+    try {
+      // Clear all local state immediately
+      setUser(null)
+      setProfile(null)
+      
+      // Clear any cached data from localStorage
+      if (typeof window !== 'undefined') {
+        // Clear all localStorage items related to the app
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.includes('supabase') || key.includes('ghin'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+        
+        // Clear sessionStorage as well
+        sessionStorage.clear()
+      }
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Sign out error:', error)
+        // If it's a force logout, don't throw - just continue
+        if (!forceLogout) {
+          throw error
+        }
+      }
+      
+      // Force reload to clear any remaining state if force logout
+      if (forceLogout) {
+        window.location.href = '/login'
+      }
+    } catch (error) {
+      console.error('Error during sign out:', error)
+      if (forceLogout) {
+        // Force redirect even on error
+        window.location.href = '/login'
+      } else {
+        throw error
+      }
     }
   }
 

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './components/Login'
+import Logout from './components/Logout'
 import Profile from './components/Profile'
 import Settings from './components/Settings'
 import PublicProfilesList from './components/PublicProfilesList'
@@ -35,6 +36,8 @@ const AppRouter = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={user ? <Navigate to={`/profile/${user.id}`} replace /> : <Login />} />
+      <Route path="/login" element={user ? <Navigate to={`/profile/${user.id}`} replace /> : <Login />} />
+      <Route path="/logout" element={<Logout />} />
       <Route path="/profiles/public" element={<PublicProfilesList />} />
       <Route path="/profile/:userId" element={<Profile />} />
       

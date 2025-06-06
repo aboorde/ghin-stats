@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import SessionStatus from './SessionStatus'
@@ -7,6 +7,51 @@ import SessionDebug from './SessionDebug'
 const Layout = ({ children, hideHeader = false }) => {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [showEmergencyReset, setShowEmergencyReset] = useState(false)
+  const [clickCount, setClickCount] = useState(0)
+
+  // Show emergency reset after 5 rapid clicks on the logo
+  useEffect(() => {
+    if (clickCount >= 5) {
+      setShowEmergencyReset(true)
+      // Hide after 10 seconds
+      const timer = setTimeout(() => {
+        setShowEmergencyReset(false)
+        setClickCount(0)
+      }, 10000)
+      return () => clearTimeout(timer)
+    }
+  }, [clickCount])
+
+  const handleLogoClick = () => {
+    setClickCount(prev => prev + 1)
+    // Reset counter after 2 seconds of no clicks
+    setTimeout(() => setClickCount(0), 2000)
+    navigate('/')
+  }
+
+  const handleEmergencyReset = () => {
+    if (window.confirm('⚠️ Emergency Reset\n\nThis will clear ALL application data and force a complete reload.\n\nAre you sure you want to continue?')) {
+      try {
+        // Clear everything
+        localStorage.clear()
+        sessionStorage.clear()
+        
+        // Clear IndexedDB
+        if (window.indexedDB) {
+          indexedDB.databases().then(databases => {
+            databases.forEach(db => indexedDB.deleteDatabase(db.name))
+          }).catch(() => {})
+        }
+        
+        // Navigate to root
+        window.location.href = '/'
+      } catch (error) {
+        console.error('Emergency reset error:', error)
+        window.location.href = '/'
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-pink-950/20">
@@ -25,7 +70,7 @@ const Layout = ({ children, hideHeader = false }) => {
               <div className="flex items-center gap-2 sm:gap-3">
                 <div 
                   className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-pink-500 to-pink-700 rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-pink-500/25 text-sm sm:text-base cursor-pointer hover:shadow-xl hover:shadow-pink-500/40 transition-all duration-300"
-                  onClick={() => navigate('/')}
+                  onClick={handleLogoClick}
                 >
                   S
                 </div>
@@ -65,6 +110,25 @@ const Layout = ({ children, hideHeader = false }) => {
       
       {/* Session Debug Panel (Development Only) */}
       <SessionDebug />
+      
+      {/* Emergency Reset Button (Hidden until activated) */}
+      {showEmergencyReset && (
+        <div className="fixed bottom-20 right-4 z-50 animate-fadeIn">
+          <button
+            onClick={handleEmergencyReset}
+            className="px-4 py-2 bg-gradient-to-br from-red-600 to-red-800 text-white font-medium rounded-lg shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-500 hover:to-red-700 transition-all duration-200 flex items-center gap-2"
+            title="Emergency Reset - Clear all data and reload"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Emergency Reset
+          </button>
+          <p className="text-xs text-red-300/70 mt-2 text-right">
+            Click to clear all data
+          </p>
+        </div>
+      )}
     </div>
   )
 }

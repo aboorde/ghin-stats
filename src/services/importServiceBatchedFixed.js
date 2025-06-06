@@ -308,6 +308,7 @@ async function batchUpsert(table, data, batchSize, conflictColumns, ignoreDuplic
           ignoreDuplicates: ignoreDuplicates,
           returning: 'minimal' // Reduce response size
         })
+        .throwOnError()
       
       if (error) {
         // Check if it's a duplicate key error

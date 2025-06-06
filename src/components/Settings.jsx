@@ -104,7 +104,7 @@ const Settings = () => {
     
     try {
       // Make HTTP GET request with bearer token
-      const url = `https://api2.ghin.com/api/v1/scores.json?golfer_id=${golferId}&offset=0&limit=100&from_date_played=2022-01-01&to_date_played=2025-12-31&statuses=Validated&source=GHINcom`
+      const url = `https://api2.ghin.com/api/v1/scores.json?golfer_id=${golferId}&offset=0&limit=100&from_date_played=2020-01-01&to_date_played=2025-12-31&statuses=Validated&source=GHINcom`
       console.log('📡 Fetching from API:', url)
       
       const response = await fetch(url, {

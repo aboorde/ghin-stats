@@ -18,16 +18,35 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting session:', error)
+          // Clear any corrupted auth state
+          if (error.message?.includes('invalid') || error.message?.includes('malformed')) {
+            console.warn('Clearing corrupted auth state...')
+            localStorage.removeItem('ghin-stats-auth')
+            sessionStorage.clear()
+          }
+        }
+        
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        }
+      } catch (error) {
+        console.error('Fatal error during auth initialization:', error)
+        setUser(null)
+        setProfile(null)
+      } finally {
+        // Always set loading to false, even on error
+        setLoading(false)
       }
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      }
-      setLoading(false)
-    })
+    }
+    
+    initializeAuth()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {

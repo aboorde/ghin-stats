@@ -62,6 +62,10 @@ const ManageRounds = () => {
     setShowDeleteModal(true)
   }
   
+  const handleEditClick = (round) => {
+    navigate(`/edit-round/${round.id}`)
+  }
+  
   const handleDeleteConfirm = async () => {
     if (!selectedRound) return
     
@@ -213,6 +217,7 @@ const ManageRounds = () => {
                       key={round.id}
                       round={round}
                       onDelete={handleDeleteClick}
+                      onEdit={handleEditClick}
                       isMobile={true}
                     />
                   ))}
@@ -257,6 +262,7 @@ const ManageRounds = () => {
                       key={round.id}
                       round={round}
                       onDelete={handleDeleteClick}
+                      onEdit={handleEditClick}
                       isMobile={false}
                     />
                   ))}

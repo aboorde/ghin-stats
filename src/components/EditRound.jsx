@@ -1,31 +1,79 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { CourseInfoForm } from './molecules'
 import { ScorecardEntry, RoundReview } from './organisms'
-import { saveRound, validateRoundData } from '../services/roundEntryService'
+import { fetchRoundForEdit, updateRound, validateRoundData } from '../services/roundEntryService'
 import PageHeader from './ui/PageHeader'
 import Card from './ui/Card'
+import Loading from './ui/Loading'
 import { Button } from './atoms'
 
 /**
- * AddRound - Complete round entry flow
- * Mobile-optimized multi-step form for entering golf rounds
+ * EditRound - Edit existing round flow
+ * Reuses components from AddRound but pre-populates with existing data
  * 
  * Steps:
- * 1. Course Selection - Basic round information
- * 2. Scorecard Entry - Hole-by-hole scoring
+ * 1. Course Selection - Edit basic round information
+ * 2. Scorecard Entry - Edit hole-by-hole scoring
  * 3. Review & Submit - Summary and confirmation
  */
-const AddRound = () => {
+const EditRound = () => {
+  const { roundId } = useParams()
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
-  const [courseData, setCourseData] = useState({
-    number_of_holes: 18,
-    played_at: new Date().toISOString().split('T')[0]
-  })
+  const [courseData, setCourseData] = useState({})
   const [holesData, setHolesData] = useState([])
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+
+  // Load existing round data
+  useEffect(() => {
+    loadRoundData()
+  }, [roundId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadRoundData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const result = await fetchRoundForEdit(roundId)
+      
+      if (result.success) {
+        const { round, holeDetails } = result.data
+        
+        // Set course data from round
+        setCourseData({
+          course_name: round.course_name,
+          facility_name: round.facility_name,
+          course_rating: round.course_rating,
+          slope_rating: round.slope_rating,
+          tee_name: round.tee_name,
+          played_at: round.played_at,
+          number_of_holes: round.number_of_holes
+        })
+        
+        // Set holes data
+        setHolesData(holeDetails.map(hole => ({
+          hole_number: hole.hole_number,
+          par: hole.par,
+          stroke_allocation: hole.stroke_allocation,
+          adjusted_gross_score: hole.adjusted_gross_score,
+          putts: hole.putts,
+          fairway_hit: hole.fairway_hit,
+          gir_flag: hole.gir_flag,
+          drive_accuracy: hole.drive_accuracy
+        })))
+      } else {
+        setError(result.error || 'Failed to load round')
+      }
+    } catch (err) {
+      console.error('Error loading round:', err)
+      setError('Failed to load round data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleCourseSubmit = () => {
     setCurrentStep(2)
@@ -45,8 +93,8 @@ const AddRound = () => {
       return
     }
 
-    // Save round
-    const result = await saveRound(data)
+    // Update round
+    const result = await updateRound(roundId, data)
     
     if (result.success) {
       setSuccess(true)
@@ -63,8 +111,31 @@ const AddRound = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     } else {
-      navigate(-1)
+      navigate('/manage-rounds')
     }
+  }
+
+  // Loading state
+  if (loading) {
+    return <Loading />
+  }
+
+  // Error loading round
+  if (!courseData.course_name && !loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center">
+          <h2 className="text-2xl font-bold text-white mb-2">Round Not Found</h2>
+          <p className="text-gray-400 mb-4">Unable to load the requested round.</p>
+          <Button
+            onClick={() => navigate('/manage-rounds')}
+            variant="primary"
+          >
+            Back to Manage Rounds
+          </Button>
+        </Card>
+      </div>
+    )
   }
 
   // Success state
@@ -77,8 +148,8 @@ const AddRound = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Round Saved!</h2>
-          <p className="text-gray-400">Your round has been successfully recorded.</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Round Updated!</h2>
+          <p className="text-gray-400">Your changes have been saved successfully.</p>
         </Card>
       </div>
     )
@@ -99,8 +170,8 @@ const AddRound = () => {
               </svg>
             </button>
             <PageHeader 
-              title="Add New Round" 
-              subtitle="Enter your scorecard details"
+              title="Edit Round" 
+              subtitle={`${courseData.course_name} - ${courseData.played_at}`}
             />
           </div>
           
@@ -164,6 +235,7 @@ const AddRound = () => {
             holesData={holesData}
             onSubmit={handleSubmit}
             onEdit={handleBack}
+            isEdit={true}
           />
         )}
       </div>
@@ -171,4 +243,4 @@ const AddRound = () => {
   )
 }
 
-export default AddRound
+export default EditRound

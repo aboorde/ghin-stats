@@ -11,8 +11,9 @@ import { getScoreColor } from '../../utils/theme'
  * @param {Array} holesData - Completed hole data
  * @param {function} onSubmit - Callback to submit the round
  * @param {function} onEdit - Callback to go back and edit
+ * @param {boolean} isEdit - Whether this is an edit operation
  */
-const RoundReview = ({ courseData, holesData, onSubmit, onEdit }) => {
+const RoundReview = ({ courseData, holesData, onSubmit, onEdit, isEdit = false }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Calculate all statistics
@@ -102,7 +103,7 @@ const RoundReview = ({ courseData, holesData, onSubmit, onEdit }) => {
           </svg>
         </button>
         
-        <h1 className="text-2xl font-bold text-white mb-2">Round Review</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">{isEdit ? 'Review Changes' : 'Round Review'}</h1>
         <p className="text-gray-400">
           {courseData.course_name} • {courseData.played_at}
         </p>
@@ -304,7 +305,7 @@ const RoundReview = ({ courseData, holesData, onSubmit, onEdit }) => {
           <Button
             onClick={onEdit}
             variant="secondary"
-            size="lg"
+            size="large"
             disabled={isSubmitting}
           >
             Edit Round
@@ -312,10 +313,10 @@ const RoundReview = ({ courseData, holesData, onSubmit, onEdit }) => {
           <Button
             onClick={handleSubmit}
             variant="primary"
-            size="lg"
+            size="large"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Round'}
+            {isSubmitting ? (isEdit ? 'Updating...' : 'Submitting...') : (isEdit ? 'Update Round' : 'Submit Round')}
           </Button>
         </div>
       </div>

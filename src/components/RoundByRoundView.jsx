@@ -9,6 +9,7 @@ import { createScoresFromData } from '../models/Score'
 import { calculateRoundStatistics } from '../services/statisticsService'
 import { formatDate } from '../utils/dateHelpers'
 import { normalizeCourseData } from '../utils/dataHelpers'
+import { countScoreTypes } from '../utils/scoringUtils'
 
 const RoundByRoundView = ({ userId }) => {
   const [rounds, setRounds] = useState([])
@@ -41,14 +42,13 @@ const RoundByRoundView = ({ userId }) => {
         .select(`
           *,
           round_statistics(
-            pars_percent,
-            bogeys_percent,
-            double_bogeys_percent,
-            triple_bogeys_or_worse_percent,
-            birdies_or_better_percent,
             par3s_average,
             par4s_average,
             par5s_average
+          ),
+          hole_details(
+            adjusted_gross_score,
+            par
           )
         `)
         .order('played_at', { ascending: true }) // Always fetch in chronological order
@@ -364,7 +364,7 @@ const RoundByRoundView = ({ userId }) => {
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-4">
         {getPaginatedRounds().map((round) => {
-          const stats = round.round_statistics?.[0] || {}
+          const scoreCounts = round.hole_details ? countScoreTypes(round.hole_details) : {}
           return (
             <Card key={round.id} variant="elevated" className="p-5 hover:shadow-pink-500/20 transition-all duration-300">
               <div className="flex justify-between items-start mb-3">
@@ -390,19 +390,19 @@ const RoundByRoundView = ({ userId }) => {
                 <div className="flex justify-between">
                   <span className="text-pink-300/60">Birdies:</span>
                   <span className="text-blue-400 font-semibold">
-                    {Math.round((stats.birdies_or_better_percent || 0) * round.number_of_holes)}
+                    {(scoreCounts.eagles || 0) + (scoreCounts.birdies || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-pink-300/60">Pars:</span>
                   <span className="text-green-400">
-                    {Math.round((stats.pars_percent || 0) * round.number_of_holes)}
+                    {scoreCounts.pars || 0}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-pink-300/60">Bogeys:</span>
                   <span className="text-yellow-400">
-                    {Math.round((stats.bogeys_percent || 0) * round.number_of_holes)}
+                    {scoreCounts.bogeys || 0}
                   </span>
                 </div>
               </div>
@@ -558,6 +558,7 @@ const RoundByRoundView = ({ userId }) => {
             <tbody className="divide-y divide-pink-900/10">
               {getPaginatedRounds().map((round) => {
                 const stats = round.round_statistics?.[0] || {}
+                const scoreCounts = round.hole_details ? countScoreTypes(round.hole_details) : {}
                 return (
                   <tr key={round.id} className="hover:bg-pink-900/10 transition-all duration-200 backdrop-blur-sm">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-100">
@@ -580,25 +581,25 @@ const RoundByRoundView = ({ userId }) => {
                       {round.differential}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-blue-400 font-semibold">
-                      {Math.round((stats.birdies_or_better_percent || 0) * round.number_of_holes)}
+                      {(scoreCounts.eagles || 0) + (scoreCounts.birdies || 0)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-green-400">
-                      {Math.round((stats.pars_percent || 0) * round.number_of_holes)}
+                      {scoreCounts.pars || 0}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-yellow-400">
-                      {Math.round((stats.bogeys_percent || 0) * round.number_of_holes)}
+                      {scoreCounts.bogeys || 0}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-red-400">
-                      {Math.round(((stats.double_bogeys_percent || 0) + (stats.triple_bogeys_or_worse_percent || 0)) * round.number_of_holes)}
+                      {scoreCounts.doublePlus || 0}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
-                      {stats.par3s_average?.toFixed(1) || '-'}
+                      {stats.par3s_average ? parseFloat(stats.par3s_average).toFixed(1) : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
-                      {stats.par4s_average?.toFixed(1) || '-'}
+                      {stats.par4s_average ? parseFloat(stats.par4s_average).toFixed(1) : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-center hidden md:table-cell">
-                      {stats.par5s_average?.toFixed(1) || '-'}
+                      {stats.par5s_average ? parseFloat(stats.par5s_average).toFixed(1) : '-'}
                     </td>
                   </tr>
                 )

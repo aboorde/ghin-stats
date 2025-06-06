@@ -256,3 +256,197 @@ export const deleteRound = async (roundId) => {
     return { success: false, error: error.message }
   }
 }
+
+/**
+ * Fetch a round with all its details for editing
+ * @param {string} roundId - The ID of the round to fetch
+ * @returns {Promise<{success: boolean, data?: Object, error?: any}>}
+ */
+export const fetchRoundForEdit = async (roundId) => {
+  try {
+    // Fetch the round
+    const { data: round, error: roundError } = await supabase
+      .from('rounds')
+      .select('*')
+      .eq('id', roundId)
+      .single()
+
+    if (roundError) throw roundError
+
+    // Fetch hole details
+    const { data: holeDetails, error: holesError } = await supabase
+      .from('hole_details')
+      .select('*')
+      .eq('round_id', roundId)
+      .order('hole_number')
+
+    if (holesError) throw holesError
+
+    // Fetch round statistics
+    const { data: statistics, error: statsError } = await supabase
+      .from('round_statistics')
+      .select('*')
+      .eq('round_id', roundId)
+      .single()
+
+    if (statsError && statsError.code !== 'PGRST116') {
+      // PGRST116 means no rows found, which is ok
+      console.error('Error fetching statistics:', statsError)
+    }
+
+    return {
+      success: true,
+      data: {
+        round,
+        holeDetails,
+        statistics
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching round for edit:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Update an existing round with hole details and statistics
+ * @param {string} roundId - The ID of the round to update
+ * @param {Object} params - Round data
+ * @param {Object} params.courseData - Course information
+ * @param {Array} params.holesData - Array of hole data
+ * @param {Object} params.statistics - Calculated statistics
+ * @returns {Object} Result with success status
+ */
+export const updateRound = async (roundId, { courseData, holesData, statistics }) => {
+  try {
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    // 1. Update the round record
+    const roundData = {
+      course_name: courseData.course_name,
+      facility_name: courseData.facility_name || courseData.course_name,
+      course_rating: courseData.course_rating,
+      slope_rating: courseData.slope_rating,
+      tee_name: courseData.tee_name,
+      played_at: courseData.played_at,
+      number_of_holes: courseData.number_of_holes || 18,
+      number_of_played_holes: courseData.number_of_holes || 18,
+      adjusted_gross_score: statistics.totalScore,
+      differential: statistics.differential,
+      
+      // Front/Back 9 scores
+      front9_adjusted: statistics.front9Score,
+      back9_adjusted: statistics.back9Score,
+      
+      // Additional fields
+      posted_at: new Date().toISOString()
+    }
+
+    const { error: roundError } = await supabase
+      .from('rounds')
+      .update(roundData)
+      .eq('id', roundId)
+
+    if (roundError) {
+      console.error('Error updating round:', roundError)
+      throw new Error('Failed to update round')
+    }
+
+    // 2. Delete and recreate hole details (simpler than updating each one)
+    await supabase
+      .from('hole_details')
+      .delete()
+      .eq('round_id', roundId)
+
+    const holeDetails = holesData.map(hole => ({
+      round_id: roundId,
+      user_id: user.id,
+      hole_number: hole.hole_number,
+      par: hole.par,
+      stroke_allocation: hole.stroke_allocation || hole.hole_number,
+      adjusted_gross_score: hole.adjusted_gross_score,
+      raw_score: hole.adjusted_gross_score,
+      putts: hole.putts || 0,
+      fairway_hit: hole.fairway_hit || false,
+      gir_flag: hole.gir_flag || false,
+      drive_accuracy: hole.drive_accuracy || null
+    }))
+
+    const { error: holeError } = await supabase
+      .from('hole_details')
+      .insert(holeDetails)
+
+    if (holeError) {
+      console.error('Error updating hole details:', holeError)
+      throw new Error('Failed to update hole details')
+    }
+
+    // 3. Update or create round statistics
+    const roundStats = {
+      round_id: roundId,
+      user_id: user.id,
+      
+      // Putting stats
+      putts_total: statistics.totalPutts.toString(),
+      one_putt_or_better_percent: ((statistics.onePutts / statistics.totalHoles) * 100).toFixed(2),
+      three_putt_or_worse_percent: ((statistics.threePutts / statistics.totalHoles) * 100).toFixed(2),
+      
+      // Par averages
+      par3s_average: statistics.par3Avg.toFixed(2),
+      par4s_average: statistics.par4Avg.toFixed(2),
+      par5s_average: statistics.par5Avg.toFixed(2),
+      
+      // Scoring percentages (stored as decimals, e.g., 0.11 = 11%)
+      pars_percent: (statistics.pars / statistics.totalHoles).toFixed(2),
+      birdies_or_better_percent: ((statistics.eagles + statistics.birdies) / statistics.totalHoles).toFixed(2),
+      bogeys_percent: (statistics.bogeys / statistics.totalHoles).toFixed(2),
+      double_bogeys_percent: (statistics.doubleBogeys / statistics.totalHoles).toFixed(2),
+      triple_bogeys_or_worse_percent: (statistics.triplePlus / statistics.totalHoles).toFixed(2),
+      
+      // Fairways and greens
+      fairway_hits_percent: statistics.possibleFairways > 0 
+        ? ((statistics.fairwaysHit / statistics.possibleFairways) * 100).toFixed(2)
+        : '0',
+      gir_percent: ((statistics.greensHit / statistics.totalHoles) * 100).toFixed(2),
+      
+      // Update metadata
+      last_stats_update_date: new Date().toISOString(),
+      last_stats_update_type: 'manual_edit'
+    }
+
+    // Try to update first, if it doesn't exist, create it
+    const { error: statsUpdateError } = await supabase
+      .from('round_statistics')
+      .update(roundStats)
+      .eq('round_id', roundId)
+
+    if (statsUpdateError) {
+      // If update failed, try to insert
+      const { error: statsInsertError } = await supabase
+        .from('round_statistics')
+        .insert(roundStats)
+      
+      if (statsInsertError) {
+        console.error('Error updating round statistics:', statsInsertError)
+        // Note: We don't throw here as stats are not critical
+      }
+    }
+
+    return {
+      success: true,
+      roundId,
+      message: 'Round updated successfully'
+    }
+
+  } catch (error) {
+    console.error('Error updating round:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to update round'
+    }
+  }
+}

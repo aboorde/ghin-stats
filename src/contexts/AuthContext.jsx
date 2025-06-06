@@ -27,62 +27,85 @@ export const AuthProvider = ({ children }) => {
         // Clear any redirect flags when starting fresh
         sessionStorage.removeItem('auth-redirecting')
         
-        console.log('Getting session from Supabase...')
+        console.log('Checking authentication status...')
         
-        // Add timeout for the getSession call
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session fetch timeout')), 10000)
-        )
-        
-        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]).catch(err => {
-          console.error('Session fetch failed:', err)
-          return { data: { session: null }, error: err }
-        })
-        
-        console.log('Session fetch completed:', { hasSession: !!session, hasError: !!error })
-        
-        if (error) {
-          console.error('Error getting session:', error)
-          // Clear any corrupted auth state
-          if (error.message?.includes('invalid') || error.message?.includes('malformed') || error.message?.includes('timeout')) {
-            console.warn('Clearing corrupted/expired auth state...')
-            // Clear all Supabase-related items from localStorage
-            const keysToRemove = []
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i)
-              if (key && key.includes('supabase')) {
-                keysToRemove.push(key)
+        // Use getUser() for secure authentication check
+        // This makes a network request to validate the session
+        try {
+          console.log('Calling getUser() for secure auth check...')
+          
+          // Wrap in a Promise to ensure we can timeout
+          const userPromise = new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              reject(new Error('Auth check timeout'))
+            }, 10000) // 10 second timeout
+            
+            supabase.auth.getUser()
+              .then(result => {
+                clearTimeout(timeoutId)
+                resolve(result)
+              })
+              .catch(err => {
+                clearTimeout(timeoutId)
+                reject(err)
+              })
+          })
+          
+          const { data: { user }, error } = await userPromise.catch(err => {
+            // Don't log timeout or auth session missing as errors
+            if (err.message?.includes('timeout') || err.message?.includes('Auth session missing')) {
+              console.log('Auth check:', err.message)
+            } else {
+              console.error('Auth check error:', err)
+            }
+            return { data: { user: null }, error: err }
+          })
+          
+          console.log('Auth check completed:', { hasUser: !!user, hasError: !!error })
+          
+          if (error) {
+            // Check if it's just a missing session (expected when not logged in)
+            if (error.message?.includes('Auth session missing') || error.message?.includes('no Session')) {
+              console.log('No active session found (user not logged in)')
+            } else {
+              // This is an actual error
+              console.error('Error getting user:', error)
+              // If error is about invalid JWT, clear auth state
+              if (error.message?.includes('JWT') || error.message?.includes('invalid') || error.message?.includes('malformed')) {
+                console.warn('Invalid session detected, clearing auth state...')
+                // Clear all auth-related items from localStorage
+                const keysToRemove = []
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i)
+                  if (key && (key.includes('supabase') || key.includes('ghin-stats-auth'))) {
+                    keysToRemove.push(key)
+                  }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key))
+                sessionStorage.clear()
               }
             }
-            keysToRemove.forEach(key => localStorage.removeItem(key))
-            sessionStorage.clear()
-          }
-          setUser(null)
-          setProfile(null)
-          setSessionValidated(true)
-        } else {
-          // Validate the session is actually valid
-          if (session?.user) {
-            console.log('Session found, validating...')
-            try {
-              // Skip additional validation on GitHub Pages to avoid hanging
-              // The session from getSession is sufficient
-              setUser(session.user)
-              console.log('User set, fetching profile...')
-              await fetchProfile(session.user.id)
-            } catch (validationError) {
-              console.error('Session validation error:', validationError)
-              setUser(null)
-              setProfile(null)
-            }
+            setUser(null)
+            setProfile(null)
+          } else if (user) {
+            console.log('Valid user found:', user.id)
+            setUser(user)
+            await fetchProfile(user.id)
           } else {
-            console.log('No session found')
+            console.log('No authenticated user')
             setUser(null)
             setProfile(null)
           }
-          setSessionValidated(true)
+        } catch (authError) {
+          // Only log as error if it's not an expected "no session" error
+          if (!authError.message?.includes('Auth session missing') && !authError.message?.includes('no Session')) {
+            console.error('Critical auth check error:', authError)
+          }
+          setUser(null)
+          setProfile(null)
         }
+        
+        setSessionValidated(true)
       } catch (error) {
         console.error('Fatal error during auth initialization:', error)
         setUser(null)
@@ -97,17 +120,36 @@ export const AuthProvider = ({ children }) => {
     
     initializeAuth()
 
-    // Listen for auth changes
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only log auth events without exposing user data
       console.log('Auth state changed:', event)
       
-      // Handle auth errors and expiration
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed successfully')
+      // For auth state changes, we need to validate with getUser()
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) {
+          try {
+            // Validate the session is real
+            const { data: { user }, error } = await supabase.auth.getUser()
+            if (!error && user) {
+              console.log('Session validated for user:', user.id)
+              setUser(user)
+              await fetchProfile(user.id)
+            } else {
+              // Only log as error if it's not a missing session
+              if (error && !error.message?.includes('Auth session missing')) {
+                console.error('Session validation failed:', error)
+              }
+              setUser(null)
+              setProfile(null)
+            }
+          } catch (err) {
+            console.error('Error validating session:', err)
+            setUser(null)
+            setProfile(null)
+          }
+        }
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out')
-        // Clear all local state
         setUser(null)
         setProfile(null)
         // Redirect to login if not already there
@@ -115,42 +157,49 @@ export const AuthProvider = ({ children }) => {
           const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
           window.location.replace(loginPath)
         }
-      } else if (event === 'USER_UPDATED' && !session) {
-        // Session expired or was invalidated
-        console.warn('Session expired or invalidated')
-        setUser(null)
-        setProfile(null)
-        // Redirect to login
-        if (window.location.pathname !== '/login' && !window.location.pathname.includes('/ghin-stats/login')) {
-          const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
-          window.location.replace(loginPath)
-        }
-      }
-      
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const fetchProfile = async (userId) => {
     try {
       console.log('Fetching profile for user:', userId)
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
+      
+      // Add timeout for profile fetch
+      const profilePromise = new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Profile fetch timeout'))
+        }, 5000)
+        
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single()
+          .then(result => {
+            clearTimeout(timeoutId)
+            resolve(result)
+          })
+          .catch(err => {
+            clearTimeout(timeoutId)
+            reject(err)
+          })
+      })
+      
+      const { data, error } = await profilePromise.catch(err => {
+        console.error('Profile fetch error:', err)
+        return { data: null, error: err }
+      })
 
       if (error) {
         console.error('Profile fetch error:', error)
         throw error
       }
+      
       console.log('Profile fetched successfully')
       setProfile(data)
     } catch (error) {
@@ -165,28 +214,18 @@ export const AuthProvider = ({ children }) => {
       password,
     })
     if (error) {
-      // Don't log the full error object which might contain sensitive data
       console.error('Sign in error:', error.message)
       throw error
     }
-    // Session will be automatically managed by onAuthStateChange
+    
+    // After sign in, validate with getUser()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('Failed to validate session after sign in')
+    }
+    
     return data
   }
-
-  // Sign up functionality disabled for now
-  // const signUp = async (email, password, fullName) => {
-  //   const { data, error } = await supabase.auth.signUp({
-  //     email,
-  //     password,
-  //     options: {
-  //       data: {
-  //         full_name: fullName,
-  //       }
-  //     }
-  //   })
-  //   if (error) throw error
-  //   return data
-  // }
 
   const refreshSession = async () => {
     try {
@@ -195,6 +234,14 @@ export const AuthProvider = ({ children }) => {
         console.error('Session refresh failed:', error)
         return null
       }
+      
+      // Validate the refreshed session
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('Session validation failed after refresh:', userError)
+        return null
+      }
+      
       return data.session
     } catch (error) {
       console.error('Session refresh error:', error)
@@ -226,29 +273,27 @@ export const AuthProvider = ({ children }) => {
       
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error)
-        // If it's a force logout, don't throw - just continue
-        if (!forceLogout) {
-          throw error
-        }
+      if (error && !forceLogout) {
+        // Only throw if not force logout
+        throw error
       }
       
       // Force reload to clear any remaining state if force logout
       if (forceLogout) {
-        window.location.href = '/login'
+        const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
+        window.location.href = loginPath
       }
     } catch (error) {
       console.error('Error during sign out:', error)
       if (forceLogout) {
         // Force redirect even on error
-        window.location.href = '/login'
+        const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
+        window.location.href = loginPath
       } else {
         throw error
       }
     }
   }
-
 
   const value = {
     user,
@@ -256,7 +301,6 @@ export const AuthProvider = ({ children }) => {
     loading,
     sessionValidated,
     signIn,
-    // signUp, // Disabled for now
     signOut,
     refreshSession,
   }

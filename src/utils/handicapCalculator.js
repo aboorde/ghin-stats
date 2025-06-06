@@ -20,6 +20,17 @@
  * 20+ rounds: lowest 8 differentials
  */
 
+/**
+ * Calculate handicap differential for a single round
+ * Formula: (Adjusted Gross Score - Course Rating) × 113 / Slope Rating
+ */
+export const calculateHandicapDifferential = (adjustedGrossScore, courseRating, slopeRating) => {
+  if (!adjustedGrossScore || !courseRating || !slopeRating) return null;
+  
+  const differential = ((adjustedGrossScore - courseRating) * 113) / slopeRating;
+  return Math.round(differential * 10) / 10; // Round to 1 decimal
+};
+
 export const calculateHandicapIndex = (rounds) => {
   // Filter to only include valid rounds with differentials
   const validRounds = rounds.filter(round => 

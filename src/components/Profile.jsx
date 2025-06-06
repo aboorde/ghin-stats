@@ -181,12 +181,26 @@ const Profile = () => {
                   </button>
                 )}
                 {isOwnProfile && (
-                  <button
-                    onClick={() => navigate('/settings')}
-                    className="px-4 py-2 bg-slate-800/80 text-white rounded-lg hover:bg-pink-900/30 border border-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
-                  >
-                    Edit Profile
-                  </button>
+                  <>
+                    <button
+                      onClick={() => navigate('/add-round')}
+                      className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-all duration-200 font-medium"
+                    >
+                      + Add Round
+                    </button>
+                    <button
+                      onClick={() => navigate('/manage-rounds')}
+                      className="px-4 py-2 bg-slate-800/80 text-white rounded-lg hover:bg-pink-900/30 border border-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
+                    >
+                      Manage Rounds
+                    </button>
+                    <button
+                      onClick={() => navigate('/settings')}
+                      className="px-4 py-2 bg-slate-800/80 text-white rounded-lg hover:bg-pink-900/30 border border-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
+                    >
+                      Edit Profile
+                    </button>
+                  </>
                 )}
               </div>
             </div>

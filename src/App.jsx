@@ -6,6 +6,8 @@ import Login from './components/Login'
 import Profile from './components/Profile'
 import Settings from './components/Settings'
 import PublicProfilesList from './components/PublicProfilesList'
+import AddRound from './components/AddRound'
+import ManageRounds from './components/ManageRounds'
 import Loading from './components/ui/Loading'
 import { useSessionMonitor } from './hooks/useSessionMonitor'
 
@@ -39,6 +41,16 @@ const AppRouter = () => {
       <Route path="/settings" element={
         <ProtectedRoute>
           <Settings />
+        </ProtectedRoute>
+      } />
+      <Route path="/add-round" element={
+        <ProtectedRoute>
+          <AddRound />
+        </ProtectedRoute>
+      } />
+      <Route path="/manage-rounds" element={
+        <ProtectedRoute>
+          <ManageRounds />
         </ProtectedRoute>
       } />
     </Routes>

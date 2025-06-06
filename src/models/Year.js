@@ -61,7 +61,8 @@ export class Year {
    */
   addRound(round) {
     // Only count 18-hole rounds for statistics
-    if (round.number_of_holes !== 18) return
+    // If number_of_holes is not specified, assume it's an 18-hole round
+    if (round.number_of_holes !== undefined && round.number_of_holes !== 18) return
     
     this.rounds++
     this.scores.push(round.adjusted_gross_score)
@@ -83,8 +84,8 @@ export class Year {
     
     // Track par type performance and scoring distribution
     // Statistics come from the round_statistics table via join
-    if (round.round_statistics?.[0]) {
-      const stats = round.round_statistics[0]
+    if (round.round_statistics) {
+      const stats = round.round_statistics
       
       // Parse par averages (stored as strings in database)
       const par3Avg = this.safeParse(stats.par3s_average)
@@ -102,16 +103,17 @@ export class Year {
       const triplesPercent = this.safeParse(stats.triple_bogeys_or_worse_percent)
       
       // Convert percentages to approximate hole counts
+      // Note: percentages are already in decimal form (e.g., 0.11 = 11%)
       const holesPerRound = 18
       if (parsPercent !== null) {
-        this.scoringDistribution.pars += Math.round((parsPercent / 100) * holesPerRound)
+        this.scoringDistribution.pars += Math.round(parsPercent * holesPerRound)
       }
       if (bogeysPercent !== null) {
-        this.scoringDistribution.bogeys += Math.round((bogeysPercent / 100) * holesPerRound)
+        this.scoringDistribution.bogeys += Math.round(bogeysPercent * holesPerRound)
       }
       if (doublesPercent !== null && triplesPercent !== null) {
         this.scoringDistribution.doublePlus += Math.round(
-          ((doublesPercent + triplesPercent) / 100) * holesPerRound
+          (doublesPercent + triplesPercent) * holesPerRound
         )
       }
     }

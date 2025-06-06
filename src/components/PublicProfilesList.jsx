@@ -45,14 +45,14 @@ const PublicProfilesList = () => {
         (data || []).map(async (profile) => {
           // Get latest round and count
           const { data: scores, error: scoresError } = await supabase
-            .from('scores')
+            .from('rounds')
             .select('played_at, adjusted_gross_score')
             .eq('user_id', profile.id)
             .order('played_at', { ascending: false })
             .limit(1)
 
           const { count } = await supabase
-            .from('scores')
+            .from('rounds')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', profile.id)
 
@@ -63,7 +63,7 @@ const PublicProfilesList = () => {
           }
         })
       )
-
+      console.log("WTA", {profilesWithStats})
       setProfiles(profilesWithStats.filter(p => p.totalRounds > 0))
     } catch (err) {
       console.error('Error fetching public profiles:', err)

@@ -79,17 +79,18 @@ const Profile = () => {
         .eq('user_id', userId)
       
       setHasRounds(count > 0)
-      
+       console.log("WARWTGE", {profileData})
       // Calculate handicap index if not stored
       if (profileData.handicap_index === null || profileData.handicap_index === undefined) {
         const { data: rounds } = await supabase
           .from('rounds')
-          .select('differential, played_at')
+          .select('differential, played_at, number_of_holes')
           .eq('user_id', userId)
           .eq('number_of_holes', 18)
           .order('played_at', { ascending: false })
           .limit(20)
-        
+          .throwOnError()
+        console.log("WAT", { rounds})
         if (rounds && rounds.length >= 3) {
           const calculatedIndex = calculateHandicapIndex(rounds)
           setHandicapIndex(calculatedIndex)

@@ -379,10 +379,36 @@ const CourseByCourseSummary = ({ userId }) => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="month" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
+                  <YAxis 
+                    stroke="#9ca3af"
+                    domain={[
+                      () => {
+                        // Find the minimum score and round down to nearest 5
+                        const minScore = Math.min(...improvementData.map(d => d.avgScore))
+                        return Math.floor(minScore / 5) * 5 - 5
+                      },
+                      () => {
+                        // Find the maximum score and round up to nearest 5
+                        const maxScore = Math.max(...improvementData.map(d => d.avgScore))
+                        return Math.ceil(maxScore / 5) * 5 + 5
+                      }
+                    ]}
+                    ticks={Array.from({ length: 10 }, (_, i) => 70 + i * 5).filter(tick => {
+                      const scores = improvementData.map(d => d.avgScore)
+                      const min = Math.min(...scores)
+                      const max = Math.max(...scores)
+                      return tick >= (Math.floor(min / 5) * 5 - 5) && tick <= (Math.ceil(max / 5) * 5 + 5)
+                    })}
+                    tickFormatter={(value) => value.toFixed(0)}
+                  />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }}
                     labelStyle={{ color: '#e5e7eb' }}
+                    formatter={(value, name) => {
+                      if (name === 'avgScore') return [`${value.toFixed(1)}`, 'Avg Score']
+                      if (name === 'avgDifferential') return [`${value.toFixed(1)}`, 'Differential']
+                      return value
+                    }}
                   />
                   <Area 
                     type="monotone" 

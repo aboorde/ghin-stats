@@ -43,6 +43,7 @@ const YearByYearAnalysis = ({ userId }) => {
           adjusted_gross_score,
           differential,
           course_name,
+          number_of_holes,
           round_statistics(
             par3s_average,
             par4s_average,

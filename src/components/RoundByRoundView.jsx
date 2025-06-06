@@ -21,10 +21,17 @@ const RoundByRoundView = ({ userId }) => {
   const [filterCourse, setFilterCourse] = useState('all')
   const [filterScoreRange, setFilterScoreRange] = useState('all')
   const [courses, setCourses] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
 
   useEffect(() => {
     fetchRounds()
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterCourse, filterScoreRange, tableSortField, tableSortOrder])
 
   const fetchRounds = async () => {
     try {
@@ -145,6 +152,62 @@ const RoundByRoundView = ({ userId }) => {
     }
   }
 
+  // Pagination logic
+  const getPaginatedRounds = () => {
+    const filteredRounds = getFilteredAndSortedRounds()
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredRounds.slice(startIndex, endIndex)
+  }
+
+  const totalPages = Math.max(1, Math.ceil(getFilteredAndSortedRounds().length / itemsPerPage))
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+    // Scroll to top of table
+    document.querySelector('.table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(Number(newItemsPerPage))
+    setCurrentPage(1)
+  }
+
+  // Generate page numbers for pagination controls
+  const getPageNumbers = () => {
+    const pages = []
+    const maxPagesToShow = 5
+    
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      pages.push(1)
+      
+      let startPage = Math.max(2, currentPage - 1)
+      let endPage = Math.min(totalPages - 1, currentPage + 1)
+      
+      if (currentPage <= 2) {
+        endPage = Math.min(4, totalPages - 1)
+      } else if (currentPage >= totalPages - 1) {
+        startPage = Math.max(2, totalPages - 3)
+      }
+      
+      if (startPage > 2) pages.push('...')
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i)
+      }
+      
+      if (endPage < totalPages - 1) pages.push('...')
+      
+      pages.push(totalPages)
+    }
+    
+    return pages
+  }
+
 
   if (loading) {
     return <Loading message="Loading rounds..." />
@@ -168,7 +231,7 @@ const RoundByRoundView = ({ userId }) => {
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         /* Custom option styling for dark theme */
         option {
           background-color: #020617;
@@ -227,9 +290,16 @@ const RoundByRoundView = ({ userId }) => {
       <Card variant="elevated" className="p-6 mb-6 bg-gradient-to-br from-slate-900/95 to-pink-950/10 border-pink-900/40">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-lg font-semibold bg-gradient-to-r from-pink-400 to-pink-600 bg-clip-text text-transparent">Table Filters & Sorting</h3>
-          <span className="text-sm text-pink-400/60 font-medium">
-            Showing {getFilteredAndSortedRounds().length} of {rounds.length} rounds
-          </span>
+          <div className="text-right">
+            <span className="text-sm text-pink-400/60 font-medium">
+              Showing {Math.min(itemsPerPage * currentPage, getFilteredAndSortedRounds().length)} of {getFilteredAndSortedRounds().length} filtered rounds
+            </span>
+            {getFilteredAndSortedRounds().length !== rounds.length && (
+              <span className="block text-xs text-pink-300/40 mt-1">
+                ({rounds.length} total)
+              </span>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
@@ -293,8 +363,8 @@ const RoundByRoundView = ({ userId }) => {
 
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-4">
-        {getFilteredAndSortedRounds().map((round) => {
-          const stats = round.statistics?.[0] || {}
+        {getPaginatedRounds().map((round) => {
+          const stats = round.round_statistics?.[0] || {}
           return (
             <Card key={round.id} variant="elevated" className="p-5 hover:shadow-pink-500/20 transition-all duration-300">
               <div className="flex justify-between items-start mb-3">
@@ -339,10 +409,70 @@ const RoundByRoundView = ({ userId }) => {
             </Card>
           )
         })}
+        
+        {/* Mobile Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex flex-col items-center space-y-4">
+            <div className="flex items-center justify-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg bg-slate-900/80 text-pink-300 border border-pink-900/30 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <div className="flex items-center space-x-1">
+                {getPageNumbers().map((page, index) => (
+                  <button
+                    key={index}
+                    onClick={() => page !== '...' && handlePageChange(page)}
+                    disabled={page === '...'}
+                    className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 ${
+                      page === currentPage
+                        ? 'bg-gradient-to-br from-pink-500 to-pink-700 text-white shadow-lg shadow-pink-500/25'
+                        : page === '...'
+                        ? 'text-pink-300/50 cursor-default'
+                        : 'bg-slate-900/80 text-pink-300 border border-pink-900/30 hover:bg-pink-900/30 hover:border-pink-700/50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg bg-slate-900/80 text-pink-300 border border-pink-900/30 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="text-xs text-pink-300/70 font-medium uppercase tracking-wider">Per Page:</label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                className="px-3 py-1.5 bg-slate-950/80 border border-pink-900/30 rounded-lg text-slate-100 text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] bg-[position:right_0.5rem_center] bg-no-repeat pr-8"
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Desktop Table View */}
-      <Card variant="elevated" className="overflow-hidden hidden md:block p-0 bg-gradient-to-br from-slate-900/95 to-pink-950/10">
+      <Card variant="elevated" className="overflow-hidden hidden md:block p-0 bg-gradient-to-br from-slate-900/95 to-pink-950/10 table-container">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-pink-900/20">
             <thead className="bg-slate-950/60 backdrop-blur-sm">
@@ -426,8 +556,8 @@ const RoundByRoundView = ({ userId }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-pink-900/10">
-              {getFilteredAndSortedRounds().map((round) => {
-                const stats = round.statistics?.[0] || {}
+              {getPaginatedRounds().map((round) => {
+                const stats = round.round_statistics?.[0] || {}
                 return (
                   <tr key={round.id} className="hover:bg-pink-900/10 transition-all duration-200 backdrop-blur-sm">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-100">
@@ -476,6 +606,72 @@ const RoundByRoundView = ({ userId }) => {
             </tbody>
           </table>
         </div>
+        
+        {/* Desktop Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 bg-slate-950/60 backdrop-blur-sm border-t border-pink-900/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-pink-300/70 font-medium">Per Page:</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-950/80 border border-pink-900/30 rounded-lg text-slate-100 text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 hover:border-pink-700/50 backdrop-blur-sm appearance-none cursor-pointer bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNDEgMEw2IDQuNThMMTAuNTkgMEwxMiAxLjQxTDYgNy40MUwwIDEuNDFMMC41OSAwTDEuNDEgMFoiIGZpbGw9IiNmNDcyYjYiLz48L3N2Zz4=')] bg-[position:right_0.5rem_center] bg-no-repeat pr-8"
+                >
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg bg-slate-900/80 text-pink-300 border border-pink-900/30 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                <div className="flex items-center space-x-1">
+                  {getPageNumbers().map((page, index) => (
+                    <button
+                      key={index}
+                      onClick={() => page !== '...' && handlePageChange(page)}
+                      disabled={page === '...'}
+                      className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 ${
+                        page === currentPage
+                          ? 'bg-gradient-to-br from-pink-500 to-pink-700 text-white shadow-lg shadow-pink-500/25'
+                          : page === '...'
+                          ? 'text-pink-300/50 cursor-default'
+                          : 'bg-slate-900/80 text-pink-300 border border-pink-900/30 hover:bg-pink-900/30 hover:border-pink-700/50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg bg-slate-900/80 text-pink-300 border border-pink-900/30 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-900/30 hover:border-pink-700/50 transition-all duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="text-sm text-pink-300/60">
+                Page {currentPage} of {totalPages}
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
       </div>
     </>

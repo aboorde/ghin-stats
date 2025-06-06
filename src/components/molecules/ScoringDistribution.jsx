@@ -21,7 +21,15 @@ const ScoringDistribution = ({
   title = "Scoring Distribution",
   roundType = "18-hole rounds"
 }) => {
-  const formatPercent = (value) => `${(value * 100).toFixed(1)}%`
+  // Handle both decimal (0-1) and percentage (0-100) formats
+  const formatPercent = (value) => {
+    if (value > 1) {
+      // Already a percentage
+      return `${value.toFixed(1)}%`
+    }
+    // Convert decimal to percentage
+    return `${(value * 100).toFixed(1)}%`
+  }
 
   return (
     <div className="mb-6">

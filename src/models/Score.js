@@ -1,65 +1,85 @@
 /**
- * Score model representing a golf round score
+ * Score Model (Legacy Compatibility)
+ * 
+ * This model is DEPRECATED. The database uses 'rounds' table, not 'scores'.
+ * This file exists only for backward compatibility.
+ * New code should use Round model directly.
+ * 
+ * @deprecated Use Round model instead
+ * @module models/Score
  */
-export class Score {
+
+import { Round } from './Round'
+
+/**
+ * Score class - deprecated alias for Round
+ * @deprecated Use Round class instead
+ */
+export class Score extends Round {
   constructor(data = {}) {
-    this.id = data.id
-    this.golferId = data.golfer_id
-    this.userId = data.user_id
-    this.playedAt = data.played_at ? new Date(data.played_at) : null
-    this.adjustedGrossScore = data.adjusted_gross_score
-    this.differential = data.differential
-    this.courseName = data.course_name
-    this.teeName = data.tee_name
-    this.courseRating = data.course_rating
-    this.slopeRating = data.slope_rating
-    this.numberOfHoles = data.number_of_holes || 18
-    this.pcc = data.pcc || 0
-    
-    // Related data
-    this.statistics = data.statistics || null
-    this.holeDetails = data.hole_details || []
-    this.adjustments = data.adjustments || []
-  }
-  
-  /**
-   * Get the performance level and color for this score
-   */
-  getPerformanceLevel() {
-    if (this.numberOfHoles === 9) {
-      if (this.adjustedGrossScore < 52) return { color: 'text-green-400 font-bold', level: 'excellent' }
-      if (this.adjustedGrossScore < 55) return { color: 'text-yellow-400', level: 'good' }
-      if (this.adjustedGrossScore < 57) return { color: 'text-orange-400', level: 'average' }
-      return { color: 'text-red-400', level: 'poor' }
+    // Map old Score property names to Round property names
+    const mappedData = {
+      ...data,
+      // Map camelCase to snake_case for backward compatibility
+      golfer_id: data.golfer_id || data.golferId,
+      user_id: data.user_id || data.userId,
+      played_at: data.played_at || data.playedAt,
+      adjusted_gross_score: data.adjusted_gross_score || data.adjustedGrossScore,
+      course_name: data.course_name || data.courseName,
+      tee_name: data.tee_name || data.teeName,
+      course_rating: data.course_rating || data.courseRating,
+      slope_rating: data.slope_rating || data.slopeRating,
+      number_of_holes: data.number_of_holes || data.numberOfHoles || 18,
+      hole_details: data.hole_details || data.holeDetails || []
     }
     
-    // 18 holes
-    if (this.adjustedGrossScore < 105) return { color: 'text-green-400 font-bold', level: 'excellent' }
-    if (this.adjustedGrossScore < 110) return { color: 'text-yellow-400', level: 'good' }
-    if (this.adjustedGrossScore < 115) return { color: 'text-orange-400', level: 'average' }
-    return { color: 'text-red-400', level: 'poor' }
+    super(mappedData)
+    
+    // Add legacy property aliases for backward compatibility
+    Object.defineProperty(this, 'golferId', { get: () => this.golfer_id })
+    Object.defineProperty(this, 'userId', { get: () => this.user_id })
+    Object.defineProperty(this, 'playedAt', { get: () => this.played_at })
+    Object.defineProperty(this, 'adjustedGrossScore', { get: () => this.adjusted_gross_score })
+    Object.defineProperty(this, 'courseName', { get: () => this.course_name })
+    Object.defineProperty(this, 'teeName', { get: () => this.tee_name })
+    Object.defineProperty(this, 'courseRating', { get: () => this.course_rating })
+    Object.defineProperty(this, 'slopeRating', { get: () => this.slope_rating })
+    Object.defineProperty(this, 'numberOfHoles', { get: () => this.number_of_holes })
+    Object.defineProperty(this, 'holeDetails', { get: () => this.hole_details })
+    Object.defineProperty(this, 'statistics', { get: () => this.round_statistics })
   }
   
   /**
-   * Get the color for the differential
+   * Legacy method - Get month/year key for grouping
+   * @deprecated Use Round methods instead
    */
-  getDifferentialColor() {
-    if (this.differential < 35.0) return 'text-green-400'
-    if (this.differential < 38.0) return 'text-yellow-400'
-    if (this.differential < 40.0) return 'text-orange-400'
-    return 'text-red-400'
+  getMonthYearKey() {
+    if (!this.played_at) return null
+    const date = new Date(this.played_at)
+    const month = date.getMonth() + 1
+    const year = date.getFullYear()
+    return `${year}-${month.toString().padStart(2, '0')}`
   }
   
   /**
-   * Get score relative to par
+   * Legacy method - Get year for grouping
+   * @deprecated Use Round methods instead
    */
-  getScoreToPar() {
-    const par = this.numberOfHoles === 9 ? 36 : 72
-    return this.adjustedGrossScore - par
+  getYear() {
+    return this.played_at ? new Date(this.played_at).getFullYear() : null
   }
   
   /**
-   * Get formatted score to par string
+   * Legacy method - Check if this is a complete round
+   * @deprecated Use Round methods instead
+   */
+  isComplete() {
+    return this.number_of_holes === 18
+  }
+  
+  /**
+   * Legacy method - Get formatted score to par string
+   * @deprecated Use Round methods instead
    */
   getFormattedScoreToPar() {
     const toPar = this.getScoreToPar()
@@ -69,33 +89,41 @@ export class Score {
   }
   
   /**
-   * Check if this is a complete round
+   * Legacy method - Get the performance level and color for this score
+   * @deprecated Use Round methods instead
    */
-  isComplete() {
-    return this.numberOfHoles === 18
+  getPerformanceLevel() {
+    if (this.number_of_holes === 9) {
+      if (this.adjusted_gross_score < 52) return { color: 'text-green-400 font-bold', level: 'excellent' }
+      if (this.adjusted_gross_score < 55) return { color: 'text-yellow-400', level: 'good' }
+      if (this.adjusted_gross_score < 57) return { color: 'text-orange-400', level: 'average' }
+      return { color: 'text-red-400', level: 'poor' }
+    }
+    
+    // 18 holes
+    if (this.adjusted_gross_score < 105) return { color: 'text-green-400 font-bold', level: 'excellent' }
+    if (this.adjusted_gross_score < 110) return { color: 'text-yellow-400', level: 'good' }
+    if (this.adjusted_gross_score < 115) return { color: 'text-orange-400', level: 'average' }
+    return { color: 'text-red-400', level: 'poor' }
   }
   
   /**
-   * Get month/year key for grouping
+   * Legacy method - Get the color for the differential
+   * @deprecated Use Round methods instead
    */
-  getMonthYearKey() {
-    if (!this.playedAt) return null
-    const month = this.playedAt.getMonth() + 1
-    const year = this.playedAt.getFullYear()
-    return `${year}-${month.toString().padStart(2, '0')}`
-  }
-  
-  /**
-   * Get year for grouping
-   */
-  getYear() {
-    return this.playedAt ? this.playedAt.getFullYear() : null
+  getDifferentialColor() {
+    if (this.differential < 35.0) return 'text-green-400'
+    if (this.differential < 38.0) return 'text-yellow-400'
+    if (this.differential < 40.0) return 'text-orange-400'
+    return 'text-red-400'
   }
 }
 
 /**
  * Create Score instances from array of raw data
+ * @deprecated Use createRoundsFromData instead
  */
 export const createScoresFromData = (dataArray = []) => {
+  console.warn('createScoresFromData is deprecated. Use createRoundsFromData from Round model instead.')
   return dataArray.map(data => new Score(data))
 }

@@ -29,8 +29,20 @@ const HoleByHoleView = ({ userId }) => {
     try {
       setLoading(true)
       let query = supabase
-        .from('scores')
-        .select('id, played_at, course_name, adjusted_gross_score, number_of_holes')
+        .from('rounds')
+        .select(`
+          id, 
+          played_at, 
+          course_name, 
+          adjusted_gross_score, 
+          number_of_holes,
+          differential,
+          course_rating,
+          slope_rating,
+          tee_name,
+          course_handicap,
+          net_score
+        `)
         .order('played_at', { ascending: false })
 
       // Filter by user_id if provided
@@ -55,7 +67,7 @@ const HoleByHoleView = ({ userId }) => {
     }
   }
 
-  const fetchHoleDetails = async (scoreId) => {
+  const fetchHoleDetails = async (roundId) => {
     try {
       setLoadingHoles(true)
       setHoleDetails([]) // Clear previous hole details
@@ -63,7 +75,7 @@ const HoleByHoleView = ({ userId }) => {
       const { data, error } = await supabase
         .from('hole_details')
         .select('*')
-        .eq('score_id', scoreId)
+        .eq('round_id', roundId)
         .order('hole_number', { ascending: true })
 
       if (error) throw error

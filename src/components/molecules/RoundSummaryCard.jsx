@@ -37,11 +37,38 @@ const RoundSummaryCard = ({
       <p className={scoreClass}>
         Total Score: {round.adjusted_gross_score} ({round.number_of_holes} holes)
       </p>
-      {round.differential && (
-        <p className="text-sm text-gray-500 mt-1">
-          Differential: {round.differential}
-        </p>
-      )}
+      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        {round.differential && (
+          <p className="text-gray-400">
+            <span className="text-gray-500">Differential:</span> <span className="font-medium text-pink-400">{round.differential}</span>
+          </p>
+        )}
+        {round.net_score && (
+          <p className="text-gray-400">
+            <span className="text-gray-500">Net Score:</span> <span className="font-medium">{round.net_score}</span>
+          </p>
+        )}
+        {round.course_rating && (
+          <p className="text-gray-400">
+            <span className="text-gray-500">Course Rating:</span> <span className="font-medium">{round.course_rating}</span>
+          </p>
+        )}
+        {round.slope_rating && (
+          <p className="text-gray-400">
+            <span className="text-gray-500">Slope:</span> <span className="font-medium">{round.slope_rating}</span>
+          </p>
+        )}
+        {round.tee_name && (
+          <p className="text-gray-400">
+            <span className="text-gray-500">Tees:</span> <span className="font-medium">{round.tee_name}</span>
+          </p>
+        )}
+        {round.course_handicap !== null && round.course_handicap !== undefined && (
+          <p className="text-gray-400">
+            <span className="text-gray-500">Course Handicap:</span> <span className="font-medium">{round.course_handicap}</span>
+          </p>
+        )}
+      </div>
     </div>
   )
 }

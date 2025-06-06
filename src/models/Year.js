@@ -1,9 +1,14 @@
 /**
  * Year Model
  * 
- * Encapsulates yearly golf statistics and performance metrics.
+ * Client-side aggregation model for yearly golf statistics.
+ * This model does NOT correspond to a database table - it's created
+ * by aggregating data from the 'rounds' and 'round_statistics' tables.
+ * 
  * Tracks rounds, scores, differentials, monthly trends, course breakdown,
  * par type performance, and scoring distribution for a specific year.
+ * 
+ * @module models/Year
  */
 
 import { calculateAverage } from '../utils/scoreHelpers'
@@ -40,13 +45,27 @@ export class Year {
   }
 
   /**
+   * Safe parse function to convert database strings to numbers
+   * @param {any} value - Value to parse
+   * @returns {number|null} Parsed number or null
+   */
+  safeParse(value) {
+    if (value === null || value === undefined || value === '') return null
+    const parsed = parseFloat(value)
+    return isNaN(parsed) ? null : parsed
+  }
+
+  /**
    * Add a round to this year's statistics
-   * @param {Object} round - The round data including score, stats, course info
+   * @param {Object} round - The round data from the 'rounds' table with optional 'round_statistics'
    */
   addRound(round) {
+    // Only count 18-hole rounds for statistics
+    if (round.number_of_holes !== 18) return
+    
     this.rounds++
     this.scores.push(round.adjusted_gross_score)
-    this.differentials.push(round.differential)
+    this.differentials.push(parseFloat(round.differential) || 0)
     
     // Track monthly scores
     const month = new Date(round.played_at).getMonth()
@@ -56,27 +75,45 @@ export class Year {
     this.monthlyScores[month].push(round.adjusted_gross_score)
     
     // Track course breakdown
-    const courseName = round.course_name || round.courseName
+    const courseName = round.course_name
     if (!this.courseBreakdown[courseName]) {
       this.courseBreakdown[courseName] = 0
     }
     this.courseBreakdown[courseName]++
     
     // Track par type performance and scoring distribution
-    if (round.statistics?.[0]) {
-      const stats = round.statistics[0]
+    // Statistics come from the round_statistics table via join
+    if (round.round_statistics?.[0]) {
+      const stats = round.round_statistics[0]
       
-      if (stats.par3s_average) this.par3Averages.push(stats.par3s_average)
-      if (stats.par4s_average) this.par4Averages.push(stats.par4s_average)
-      if (stats.par5s_average) this.par5Averages.push(stats.par5s_average)
+      // Parse par averages (stored as strings in database)
+      const par3Avg = this.safeParse(stats.par3s_average)
+      const par4Avg = this.safeParse(stats.par4s_average)
+      const par5Avg = this.safeParse(stats.par5s_average)
+      
+      if (par3Avg && par3Avg > 0) this.par3Averages.push(par3Avg)
+      if (par4Avg && par4Avg > 0) this.par4Averages.push(par4Avg)
+      if (par5Avg && par5Avg > 0) this.par5Averages.push(par5Avg)
+      
+      // Parse scoring percentages (stored as strings in database)
+      const parsPercent = this.safeParse(stats.pars_percent)
+      const bogeysPercent = this.safeParse(stats.bogeys_percent)
+      const doublesPercent = this.safeParse(stats.double_bogeys_percent)
+      const triplesPercent = this.safeParse(stats.triple_bogeys_or_worse_percent)
       
       // Convert percentages to approximate hole counts
       const holesPerRound = 18
-      this.scoringDistribution.pars += Math.round((stats.pars_percent || 0) * holesPerRound)
-      this.scoringDistribution.bogeys += Math.round((stats.bogeys_percent || 0) * holesPerRound)
-      this.scoringDistribution.doublePlus += Math.round(
-        ((stats.double_bogeys_percent || 0) + (stats.triple_bogeys_or_worse_percent || 0)) * holesPerRound
-      )
+      if (parsPercent !== null) {
+        this.scoringDistribution.pars += Math.round((parsPercent / 100) * holesPerRound)
+      }
+      if (bogeysPercent !== null) {
+        this.scoringDistribution.bogeys += Math.round((bogeysPercent / 100) * holesPerRound)
+      }
+      if (doublesPercent !== null && triplesPercent !== null) {
+        this.scoringDistribution.doublePlus += Math.round(
+          ((doublesPercent + triplesPercent) / 100) * holesPerRound
+        )
+      }
     }
   }
 
@@ -208,7 +245,7 @@ export class Year {
   /**
    * Create Year instance from grouped round data
    * @param {number} year - The year
-   * @param {Array} rounds - Array of round data for this year
+   * @param {Array} rounds - Array of round data from the database (with round_statistics)
    * @returns {Year} New Year instance
    */
   static fromRounds(year, rounds) {

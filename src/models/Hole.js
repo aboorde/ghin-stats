@@ -1,23 +1,46 @@
 /**
- * Hole model representing a single hole's score and details
+ * Hole Model
+ * 
+ * Represents a single hole's score and details from the 'hole_details' table.
+ * All field names match the exact database column names from DATABASE_STRUCTURE.md
+ * 
+ * @module models/Hole
  */
 export class Hole {
   constructor(data = {}) {
+    // Primary key and foreign keys
     this.id = data.id
-    this.scoreId = data.score_id
-    this.userId = data.user_id
-    this.holeNumber = data.hole_number
+    this.round_id = data.round_id  // Foreign key to rounds table (not score_id)
+    this.user_id = data.user_id
+    
+    // Hole information
+    this.hole_number = data.hole_number
     this.par = data.par
-    this.adjustedGrossScore = data.adjusted_gross_score
-    this.rawScore = data.raw_score || data.adjusted_gross_score
-    this.strokeAllocation = data.stroke_allocation
+    this.stroke_allocation = data.stroke_allocation
+    
+    // Scores
+    this.adjusted_gross_score = data.adjusted_gross_score
+    this.raw_score = data.raw_score || data.adjusted_gross_score
+    this.most_likely_score = data.most_likely_score
+    
+    // Additional tracking
+    this.putts = data.putts
+    this.fairway_hit = data.fairway_hit
+    this.gir_flag = data.gir_flag  // Green in regulation
+    this.drive_accuracy = data.drive_accuracy
+    this.approach_shot_accuracy = data.approach_shot_accuracy
+    this.x_hole = data.x_hole
+    
+    // Timestamps
+    this.created_at = data.created_at
+    this.updated_at = data.updated_at
   }
   
   /**
    * Get score relative to par
    */
   getScoreToPar() {
-    return this.adjustedGrossScore - this.par
+    return this.adjusted_gross_score - this.par
   }
   
   /**
@@ -63,31 +86,98 @@ export class Hole {
     const toPar = this.getScoreToPar()
     const perf = this.getPerformanceLevel()
     
-    if (perf.name === 'eagle') return `${this.adjustedGrossScore} (Eagle)`
-    if (perf.name === 'birdie') return `${this.adjustedGrossScore} (Birdie)`
-    if (perf.name === 'par') return `${this.adjustedGrossScore} (Par)`
-    if (perf.name === 'bogey') return `${this.adjustedGrossScore} (Bogey)`
-    if (perf.name === 'double') return `${this.adjustedGrossScore} (Double)`
-    return `${this.adjustedGrossScore} (+${toPar})`
+    if (perf.name === 'eagle') return `${this.adjusted_gross_score} (Eagle)`
+    if (perf.name === 'birdie') return `${this.adjusted_gross_score} (Birdie)`
+    if (perf.name === 'par') return `${this.adjusted_gross_score} (Par)`
+    if (perf.name === 'bogey') return `${this.adjusted_gross_score} (Bogey)`
+    if (perf.name === 'double') return `${this.adjusted_gross_score} (Double)`
+    return `${this.adjusted_gross_score} (+${toPar})`
   }
   
   /**
    * Check if this is a front nine hole
    */
   isFrontNine() {
-    return this.holeNumber <= 9
+    return this.hole_number <= 9
   }
   
   /**
    * Check if this is a back nine hole
    */
   isBackNine() {
-    return this.holeNumber > 9
+    return this.hole_number > 9
+  }
+  
+  /**
+   * Check if fairway was hit (for driving holes)
+   */
+  didHitFairway() {
+    return this.fairway_hit === true
+  }
+  
+  /**
+   * Check if green was hit in regulation
+   */
+  didHitGIR() {
+    return this.gir_flag === true
+  }
+  
+  /**
+   * Check if this was an X-hole (picked up)
+   */
+  isXHole() {
+    return this.x_hole === true
+  }
+  
+  /**
+   * Get putting performance
+   */
+  getPuttingPerformance() {
+    if (!this.putts) return null
+    
+    // Standard putts for GIR
+    const standardPutts = 2
+    
+    if (this.didHitGIR()) {
+      if (this.putts < standardPutts) return 'one-putt'
+      if (this.putts === standardPutts) return 'two-putt'
+      return 'three-putt-plus'
+    }
+    
+    // Not GIR - check for up and down
+    if (this.getScoreToPar() <= 0 && this.putts === 1) {
+      return 'up-and-down'
+    }
+    
+    return null
+  }
+  
+  /**
+   * Convert to JSON-serializable object
+   */
+  toJSON() {
+    return {
+      id: this.id,
+      round_id: this.round_id,
+      hole_number: this.hole_number,
+      par: this.par,
+      adjusted_gross_score: this.adjusted_gross_score,
+      raw_score: this.raw_score,
+      stroke_allocation: this.stroke_allocation,
+      putts: this.putts,
+      fairway_hit: this.fairway_hit,
+      gir_flag: this.gir_flag,
+      x_hole: this.x_hole,
+      score_to_par: this.getScoreToPar(),
+      performance: this.getPerformanceLevel().name
+    }
   }
 }
 
 /**
  * Create Hole instances from array of raw data
+ * @param {Array} dataArray - Array of hole data from hole_details table
+ * @returns {Hole[]} Array of Hole instances
  */
 export const createHolesFromData = (dataArray = []) => {
   return dataArray.map(data => new Hole(data))
@@ -95,6 +185,7 @@ export const createHolesFromData = (dataArray = []) => {
 
 /**
  * Pine Valley specific hole data
+ * Used for Pine Valley analysis feature
  */
 export const PINE_VALLEY_HOLES = {
   1: { par: 4, yards: 331, handicap: 11 },

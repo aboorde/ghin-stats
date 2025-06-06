@@ -5,12 +5,19 @@ import ParTypePerformance from '../molecules/ParTypePerformance'
 import ScoringDistribution from '../molecules/ScoringDistribution'
 import EmptyState from '../molecules/EmptyState'
 import HolePerformanceChart from '../HolePerformanceChart'
+import SectionHeader from '../atoms/SectionHeader'
 
 /**
- * CourseStatistics - Complete statistics panel for a selected course
+ * CourseStatistics - Comprehensive statistics panel for a selected course
  * 
- * @param {object} courseData - Course statistics data
- * @param {array} holeAverages - Hole by hole averages for chart
+ * All data originates from database tables as defined in DATABASE_STRUCTURE.md:
+ * - rounds table: course_name, course_rating, slope_rating, adjusted_gross_score, differential, number_of_holes
+ * - round_statistics table: par3s_average, par4s_average, par5s_average, birdies_or_better_percent, 
+ *                          pars_percent, bogeys_percent, double_bogeys_percent, triple_bogeys_or_worse_percent
+ * - hole_details table: hole_number, par, adjusted_gross_score (via holeAverages)
+ * 
+ * @param {object} courseData - Aggregated course statistics from Course model
+ * @param {array} holeAverages - Hole by hole averages from hole_details aggregation
  * @param {boolean} showHoleChart - Whether to show hole performance chart
  */
 const CourseStatistics = ({ 
@@ -26,81 +33,205 @@ const CourseStatistics = ({
       />
     )
   }
+  console.log("WAT courseData", courseData)
 
-  const hasDetailedStats = courseData.avgPar3 > 0
-  const hasScoringDistribution = courseData.parPercent > 0 || courseData.bogeyPercent > 0 || courseData.doublePlusPercent > 0
+  // Data validation helpers
+  const hasAnyRounds = courseData.totalRounds > 0
+  const has18HoleRounds = courseData.rounds18 > 0
+  const has9HoleRounds = courseData.rounds9 > 0
+  
+  // Check if we have detailed statistics data
+  // These come from round_statistics table (par averages and scoring percentages)
+  const hasParTypeData = courseData.avgPar3 > 0 || courseData.avgPar4 > 0 || courseData.avgPar5 > 0
+  const hasScoringDistribution = (
+    courseData.birdiePercent > 0 || 
+    courseData.parPercent > 0 || 
+    courseData.bogeyPercent > 0 || 
+    courseData.doublePlusPercent > 0
+  )
+  const hasAnyStatistics = hasParTypeData || hasScoringDistribution
+  
+  // Format helpers
+  const formatScore = (value) => {
+    if (value === null || value === undefined || value === '-') return '-'
+    return typeof value === 'number' ? value.toFixed(1) : value
+  }
+  
+  const formatDifferential = (value) => {
+    if (value === null || value === undefined) return '-'
+    return value.toFixed(1)
+  }
+
+  // Build sub-values for metric cards
+  const getScoreSubValue = () => {
+    const parts = []
+    if (has18HoleRounds) {
+      parts.push(`18-hole: ${courseData.rounds18}`)
+    }
+    if (has9HoleRounds) {
+      parts.push(`9-hole: ${courseData.rounds9}`)
+    }
+    return parts.join(', ') || undefined
+  }
+  
+  const getDifferentialSubValue = () => {
+    if (has9HoleRounds && courseData.avgDifferential9) {
+      return `9-hole: ${formatDifferential(courseData.avgDifferential9)}`
+    }
+    return undefined
+  }
 
   return (
     <>
-      <h3 className="font-semibold mb-3 text-gray-300">{courseData.name} Details</h3>
+      {/* Course Header with Rating/Slope */}
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-300">{courseData.name}</h3>
+        <p className="text-sm text-gray-400">
+          Rating: {courseData.rating} / Slope: {courseData.slope}
+        </p>
+      </div>
       
-      {/* Summary Metrics */}
-      <MetricGrid columns={4} className="mb-6">
-        <MetricCard
-          label="Total Rounds"
-          value={courseData.totalRounds}
-          subValue={`${courseData.rounds18} × 18-hole${courseData.rounds9 > 0 ? `, ${courseData.rounds9} × 9-hole` : ''}`}
-          theme="blue"
-          icon="🏌️"
-        />
-        <MetricCard
-          label="Avg Score (18)"
-          value={courseData.avgScore18 ? courseData.avgScore18.toFixed(1) : '-'}
-          subValue={courseData.rounds9 > 0 ? `9-hole: ${courseData.avgScore9.toFixed(1)}` : undefined}
-          theme="green"
-          icon="📊"
-        />
-        <MetricCard
-          label="Best Score"
-          value={courseData.bestScore18}
-          subValue={courseData.rounds9 > 0 && courseData.bestScore9 !== '-' ? `9-hole: ${courseData.bestScore9}` : undefined}
-          theme="purple"
-          icon="🏆"
-        />
-        <MetricCard
-          label="Worst Score"
-          value={courseData.worstScore18}
-          subValue={courseData.rounds9 > 0 && courseData.worstScore9 !== '-' ? `9-hole: ${courseData.worstScore9}` : undefined}
-          theme="orange"
-          icon="📈"
-        />
-      </MetricGrid>
-
-      {/* Par Type Performance */}
-      {courseData.rounds18 > 0 && hasDetailedStats && (
-        <ParTypePerformance
-          avgPar3={courseData.avgPar3}
-          avgPar4={courseData.avgPar4}
-          avgPar5={courseData.avgPar5}
-          par3VsPar={courseData.par3VsPar}
-          par4VsPar={courseData.par4VsPar}
-          par5VsPar={courseData.par5VsPar}
-        />
+      {/* Basic Round Statistics - Always shown if any rounds exist */}
+      {hasAnyRounds && (
+        <>
+          <SectionHeader 
+            title="Round Summary"
+            subtitle={`Based on ${courseData.totalRounds} round${courseData.totalRounds !== 1 ? 's' : ''}`}
+          />
+          
+          <MetricGrid columns={4} className="mb-6">
+            <MetricCard
+              label="Total Rounds"
+              value={courseData.totalRounds}
+              subValue={getScoreSubValue()}
+              theme="blue"
+              icon="🏌️"
+            />
+            
+            {has18HoleRounds && (
+              <MetricCard
+                label="Avg Score"
+                value={formatScore(courseData.avgScore18)}
+                subValue={has9HoleRounds ? `9-hole: ${formatScore(courseData.avgScore9)}` : undefined}
+                theme="green"
+                icon="📊"
+              />
+            )}
+            
+            {has18HoleRounds && (
+              <MetricCard
+                label="Avg Differential"
+                value={formatDifferential(courseData.avgDifferential18)}
+                subValue={getDifferentialSubValue()}
+                theme="purple"
+                icon="📈"
+              />
+            )}
+            
+            {!has18HoleRounds && has9HoleRounds && (
+              <>
+                <MetricCard
+                  label="Avg Score (9)"
+                  value={formatScore(courseData.avgScore9)}
+                  theme="green"
+                  icon="📊"
+                />
+                <MetricCard
+                  label="Avg Diff (9)"
+                  value={formatDifferential(courseData.avgDifferential9)}
+                  theme="purple"
+                  icon="📈"
+                />
+              </>
+            )}
+          </MetricGrid>
+          
+          {/* Best/Worst Scores - Only for rounds with scores */}
+          {(has18HoleRounds || has9HoleRounds) && (
+            <MetricGrid columns={2} className="mb-6">
+              {has18HoleRounds && courseData.bestScore18 !== '-' && (
+                <MetricCard
+                  label="Best Score (18)"
+                  value={courseData.bestScore18}
+                  subValue={courseData.worstScore18 !== '-' ? `Worst: ${courseData.worstScore18}` : undefined}
+                  theme="green"
+                  icon="🏆"
+                />
+              )}
+              
+              {has9HoleRounds && courseData.bestScore9 !== '-' && (
+                <MetricCard
+                  label="Best Score (9)"
+                  value={courseData.bestScore9}
+                  subValue={courseData.worstScore9 !== '-' ? `Worst: ${courseData.worstScore9}` : undefined}
+                  theme="green"
+                  icon="🏆"
+                />
+              )}
+            </MetricGrid>
+          )}
+        </>
       )}
 
-      {/* Scoring Distribution */}
-      {courseData.rounds18 > 0 && hasScoringDistribution && (
-        <ScoringDistribution
-          parPercent={courseData.parPercent}
-          bogeyPercent={courseData.bogeyPercent}
-          doublePlusPercent={courseData.doublePlusPercent}
-          birdiePercent={courseData.birdiePercent}
-        />
+      {/* Par Type Performance - Only shown if statistics exist */}
+      {has18HoleRounds && hasParTypeData && (
+        <>
+          <SectionHeader 
+            title="Par Type Performance"
+            subtitle="Average scores by par (18-hole rounds)"
+          />
+          <ParTypePerformance
+            avgPar3={courseData.avgPar3}
+            avgPar4={courseData.avgPar4}
+            avgPar5={courseData.avgPar5}
+            par3VsPar={courseData.par3VsPar}
+            par4VsPar={courseData.par4VsPar}
+            par5VsPar={courseData.par5VsPar}
+          />
+        </>
       )}
 
-      {/* No Detailed Stats Message */}
-      {courseData.rounds18 > 0 && !hasDetailedStats && (
+      {/* Scoring Distribution - Only shown if statistics exist */}
+      {has18HoleRounds && hasScoringDistribution && (
+        <>
+          <SectionHeader 
+            title="Scoring Distribution"
+            subtitle="Percentage of holes by score type (18-hole rounds)"
+          />
+          <ScoringDistribution
+            birdiePercent={courseData.birdiePercent}
+            parPercent={courseData.parPercent}
+            bogeyPercent={courseData.bogeyPercent}
+            doublePlusPercent={courseData.doublePlusPercent}
+          />
+        </>
+      )}
+
+      {/* No Detailed Stats Message - Only for 18-hole rounds without statistics */}
+      {has18HoleRounds && !hasAnyStatistics && (
         <EmptyState
-          message="Detailed statistics not available for this course."
-          submessage="Only total score was entered for these rounds."
+          message="Detailed statistics not available"
+          submessage="Statistics data was not recorded for rounds at this course"
+          className="mb-6"
+        />
+      )}
+      
+      {/* No 18-hole rounds message */}
+      {!has18HoleRounds && hasAnyRounds && (
+        <EmptyState
+          message="No 18-hole rounds recorded"
+          submessage="Detailed statistics are only available for 18-hole rounds"
           className="mb-6"
         />
       )}
 
-      {/* Hole by Hole Performance Chart */}
+      {/* Hole by Hole Performance Chart - Only if hole data exists */}
       {showHoleChart && holeAverages.length > 0 && (
-        <div>
-          <h4 className="font-medium mb-2 text-gray-300">Hole by Hole Performance</h4>
+        <div className="mt-6">
+          <SectionHeader 
+            title="Hole by Hole Performance"
+            subtitle="Average score vs par by hole"
+          />
           <HolePerformanceChart data={holeAverages} />
         </div>
       )}

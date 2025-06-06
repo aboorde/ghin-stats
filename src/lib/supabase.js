@@ -14,14 +14,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: window.localStorage,
     storageKey: 'ghin-stats-auth',
-    flowType: 'pkce'
-  },
-  db: {
-    schema: 'public'
+    flowType: 'pkce', // PKCE flow for enhanced security
+    debug: false // Ensure debug is off in production
   },
   global: {
     headers: {
-      'x-client-info': 'ghin-stats'
+      'x-client-info': 'ghin-stats',
+      'x-requested-with': 'XMLHttpRequest' // CSRF protection
     }
   }
 });
+
+// Verify we're using HTTPS in production
+if (window.location.hostname !== 'localhost' && window.location.protocol !== 'https:') {
+  console.warn('🔒 Security Warning: This application should be served over HTTPS in production');
+}

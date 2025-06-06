@@ -31,7 +31,8 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
+      // Only log auth events without exposing user data
+      console.log('Auth state changed:', event)
       
       // Handle token refresh errors
       if (event === 'TOKEN_REFRESHED') {
@@ -73,7 +74,8 @@ export const AuthProvider = ({ children }) => {
       password,
     })
     if (error) {
-      console.error('Sign in error:', error)
+      // Don't log the full error object which might contain sensitive data
+      console.error('Sign in error:', error.message)
       throw error
     }
     // Session will be automatically managed by onAuthStateChange

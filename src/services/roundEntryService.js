@@ -33,7 +33,14 @@ export const saveRound = async ({ courseData, holesData, statistics }) => {
     // so we'll handle errors and cleanup manually
 
     // 1. Create the round record
+    // Generate a unique ID for manual rounds
+    // Use negative IDs to distinguish from imported rounds
+    // This ensures no collision with GHIN imported data which uses positive IDs
+    const timestamp = Date.now()
+    const manualRoundId = parseInt(`${timestamp}${Math.floor(Math.random() * 1000)}`) // Negative to avoid conflicts with imported data
+    
     const roundData = {
+      id: manualRoundId, // Required field for rounds table
       user_id: user.id,
       course_name: courseData.course_name,
       facility_name: courseData.facility_name || courseData.course_name,
@@ -53,7 +60,9 @@ export const saveRound = async ({ courseData, holesData, statistics }) => {
       // Additional fields
       is_manual: true, // This is a manually entered round
       status: 'posted',
-      score_type: 'adjusted_gross',
+      score_type: 'adjusted', // Must be 10 chars or less
+      score_type_display_full: 'Adjusted Gross Score',
+      score_type_display_short: 'Adj Gross',
       used: true,
       posted_at: new Date().toISOString()
     }
@@ -356,12 +365,7 @@ export const updateRound = async (roundId, { courseData, holesData, statistics }
       throw new Error('Failed to update round')
     }
 
-    // 2. Delete and recreate hole details (simpler than updating each one)
-    await supabase
-      .from('hole_details')
-      .delete()
-      .eq('round_id', roundId)
-
+    // 2. Upsert hole details (will update existing or create new ones)
     const holeDetails = holesData.map(hole => ({
       round_id: roundId,
       user_id: user.id,
@@ -376,9 +380,12 @@ export const updateRound = async (roundId, { courseData, holesData, statistics }
       drive_accuracy: hole.drive_accuracy || null
     }))
 
+    // Use upsert with the actual unique constraint name
     const { error: holeError } = await supabase
       .from('hole_details')
-      .insert(holeDetails)
+      .upsert(holeDetails, {
+        onConflict: 'round_id,hole_number'
+      })
 
     if (holeError) {
       console.error('Error updating hole details:', holeError)
@@ -418,22 +425,16 @@ export const updateRound = async (roundId, { courseData, holesData, statistics }
       last_stats_update_type: 'manual_edit'
     }
 
-    // Try to update first, if it doesn't exist, create it
-    const { error: statsUpdateError } = await supabase
+    // Upsert round statistics (will update existing or create new)
+    const { error: statsError } = await supabase
       .from('round_statistics')
-      .update(roundStats)
-      .eq('round_id', roundId)
+      .upsert(roundStats, {
+        onConflict: 'round_id'
+      })
 
-    if (statsUpdateError) {
-      // If update failed, try to insert
-      const { error: statsInsertError } = await supabase
-        .from('round_statistics')
-        .insert(roundStats)
-      
-      if (statsInsertError) {
-        console.error('Error updating round statistics:', statsInsertError)
-        // Note: We don't throw here as stats are not critical
-      }
+    if (statsError) {
+      console.error('Error updating round statistics:', statsError)
+      // Note: We don't throw here as stats are not critical
     }
 
     return {

@@ -7,33 +7,27 @@ import Card from './ui/Card'
  */
 const LoadingRecovery = ({ loading, timeout = 10000, children }) => {
   const [showRecovery, setShowRecovery] = useState(false)
-  const [timeoutId, setTimeoutId] = useState(null)
 
   useEffect(() => {
-    let id
+    let timeoutId
     
     if (loading) {
       // Start timeout when loading begins
-      id = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         setShowRecovery(true)
       }, timeout)
-      
-      setTimeoutId(id)
     } else {
-      // Clear timeout when loading completes
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
+      // Clear any existing recovery state when loading completes
       setShowRecovery(false)
     }
 
     // Cleanup
     return () => {
-      if (id) {
-        clearTimeout(id)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
     }
-  }, [loading, timeout, timeoutId])
+  }, [loading, timeout])
 
   const handleSoftReset = () => {
     // Try to recover by clearing auth state and reloading

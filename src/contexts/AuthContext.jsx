@@ -15,11 +15,18 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sessionValidated, setSessionValidated] = useState(false)
 
   useEffect(() => {
     // Get initial session
     const initializeAuth = async () => {
       try {
+        console.log('Initializing auth...')
+        setSessionValidated(false)
+        
+        // Clear any redirect flags when starting fresh
+        sessionStorage.removeItem('auth-redirecting')
+        
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
@@ -30,16 +37,38 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('ghin-stats-auth')
             sessionStorage.clear()
           }
-        }
-        
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          await fetchProfile(session.user.id)
+          setSessionValidated(true)
+        } else {
+          // Validate the session is actually valid
+          if (session?.user) {
+            try {
+              // Quick check to ensure the session is valid
+              const { data, error: checkError } = await supabase.auth.getUser()
+              if (checkError || !data.user) {
+                console.warn('Session appears invalid, clearing...')
+                await supabase.auth.signOut()
+                setUser(null)
+                setProfile(null)
+              } else {
+                setUser(session.user)
+                await fetchProfile(session.user.id)
+              }
+            } catch (validationError) {
+              console.error('Session validation error:', validationError)
+              setUser(null)
+              setProfile(null)
+            }
+          } else {
+            setUser(null)
+            setProfile(null)
+          }
+          setSessionValidated(true)
         }
       } catch (error) {
         console.error('Fatal error during auth initialization:', error)
         setUser(null)
         setProfile(null)
+        setSessionValidated(true)
       } finally {
         // Always set loading to false, even on error
         setLoading(false)
@@ -53,11 +82,29 @@ export const AuthProvider = ({ children }) => {
       // Only log auth events without exposing user data
       console.log('Auth state changed:', event)
       
-      // Handle token refresh errors
+      // Handle auth errors and expiration
       if (event === 'TOKEN_REFRESHED') {
         console.log('Token refreshed successfully')
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out')
+        // Clear all local state
+        setUser(null)
+        setProfile(null)
+        // Redirect to login if not already there
+        if (window.location.pathname !== '/login' && !window.location.pathname.includes('/ghin-stats/login')) {
+          const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
+          window.location.replace(loginPath)
+        }
+      } else if (event === 'USER_UPDATED' && !session) {
+        // Session expired or was invalidated
+        console.warn('Session expired or invalidated')
+        setUser(null)
+        setProfile(null)
+        // Redirect to login
+        if (window.location.pathname !== '/login' && !window.location.pathname.includes('/ghin-stats/login')) {
+          const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
+          window.location.replace(loginPath)
+        }
       }
       
       setUser(session?.user ?? null)
@@ -116,6 +163,20 @@ export const AuthProvider = ({ children }) => {
   //   return data
   // }
 
+  const refreshSession = async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        console.error('Session refresh failed:', error)
+        return null
+      }
+      return data.session
+    } catch (error) {
+      console.error('Session refresh error:', error)
+      return null
+    }
+  }
+
   const signOut = async (forceLogout = false) => {
     try {
       // Clear all local state immediately
@@ -163,20 +224,12 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Helper function to refresh session
-  const refreshSession = async () => {
-    const { data, error } = await supabase.auth.refreshSession()
-    if (error) {
-      console.error('Error refreshing session:', error)
-      return null
-    }
-    return data.session
-  }
 
   const value = {
     user,
     profile,
     loading,
+    sessionValidated,
     signIn,
     // signUp, // Disabled for now
     signOut,

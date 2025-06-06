@@ -44,9 +44,16 @@ const Profile = () => {
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchUserProfile = async () => {
+    let timeoutId
     try {
       setLoading(true)
       setError(null)
+      
+      // Add a timeout to prevent infinite loading
+      timeoutId = setTimeout(() => {
+        setError('Request timed out. Please try refreshing the page.')
+        setLoading(false)
+      }, 30000) // 30 second timeout
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -56,8 +63,14 @@ const Profile = () => {
         .single()
 
       if (profileError) {
+        clearTimeout(timeoutId)
         if (profileError.code === 'PGRST116') {
           setError('User not found')
+        } else if (profileError.message?.includes('JWT') || profileError.message?.includes('token')) {
+          // Auth error - redirect to login
+          console.error('Auth error in profile:', profileError)
+          navigate('/login')
+          return
         } else {
           throw profileError
         }
@@ -98,8 +111,20 @@ const Profile = () => {
       } else {
         setHandicapIndex(profileData.handicap_index)
       }
+      
+      // Clear timeout on success
+      clearTimeout(timeoutId)
     } catch (err) {
+      clearTimeout(timeoutId)
       console.error('Error fetching profile:', err)
+      
+      // Check for auth errors
+      if (err.message?.includes('JWT') || err.message?.includes('token') || err.code === '401') {
+        console.error('Auth error in profile:', err)
+        navigate('/login')
+        return
+      }
+      
       setError('Failed to load profile')
     } finally {
       setLoading(false)

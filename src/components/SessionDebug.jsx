@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
 const SessionDebug = () => {
-  const { user } = useAuth()
+  const { user, loading, sessionValidated } = useAuth()
   const [sessionData, setSessionData] = useState(null)
   const [showDebug, setShowDebug] = useState(false)
 
@@ -49,6 +49,13 @@ const SessionDebug = () => {
             detectSessionInUrl: true,
             storage: 'localStorage',
             storageKey: 'ghin-stats-auth'
+          },
+          debug_info: {
+            authContextLoading: loading,
+            authContextValidated: sessionValidated,
+            isRedirecting: sessionStorage.getItem('auth-redirecting') || 'false',
+            localStorage: localStorage.getItem('ghin-stats-auth') ? 'Present' : 'Missing',
+            windowLocation: window.location.pathname
           }
         })
       }
@@ -102,6 +109,13 @@ const SessionDebug = () => {
                 <h4 className="text-green-400 mb-1">Auth Config:</h4>
                 <pre className="text-gray-300 whitespace-pre-wrap">
                   {JSON.stringify(sessionData.auth_config, null, 2)}
+                </pre>
+              </div>
+
+              <div className="mb-3">
+                <h4 className="text-yellow-400 mb-1">Debug Info:</h4>
+                <pre className="text-gray-300 whitespace-pre-wrap">
+                  {JSON.stringify(sessionData.debug_info, null, 2)}
                 </pre>
               </div>
 

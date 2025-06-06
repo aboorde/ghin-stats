@@ -12,23 +12,53 @@ import { getScoreColor } from '../../utils/theme'
  * @param {function} onChange - Callback when hole data changes
  * @param {function} onComplete - Callback when scorecard is complete
  * @param {function} onBack - Callback to go back to course info
+ * @param {boolean} isEdit - Whether this is editing an existing round
  */
 const ScorecardEntry = ({ 
   courseData, 
   holesData = [], 
   onChange, 
   onComplete,
-  onBack 
+  onBack,
+  isEdit = false 
 }) => {
   const [currentHole, setCurrentHole] = useState(1)
   const [expandedHoles, setExpandedHoles] = useState(new Set())
   const [viewMode, setViewMode] = useState('single') // 'single', 'grid', or 'scorecard'
   const [editingCell, setEditingCell] = useState(null) // For scorecard view editing
   const containerRef = useRef(null)
+  
+  // Touch handling for swipe navigation - must be declared before any conditional returns
+  const [touchStart, setTouchStart] = useState(null)
+  const [touchEnd, setTouchEnd] = useState(null)
+  const minSwipeDistance = 50
 
-  // Initialize holes data if empty
+  const onTouchStart = (e) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+    
+    if (isLeftSwipe && viewMode === 'single') {
+      navigateHole('next')
+    }
+    if (isRightSwipe && viewMode === 'single') {
+      navigateHole('prev')
+    }
+  }
+
+  // Initialize holes data if empty (only for new rounds, not edits)
   useEffect(() => {
-    if (holesData.length === 0) {
+    if (holesData.length === 0 && !isEdit) {
       const defaultHoles = []
       const numHoles = courseData.number_of_holes || 18
       
@@ -50,7 +80,10 @@ const ScorecardEntry = ({
       
       onChange(defaultHoles)
     }
-  }, [courseData.number_of_holes, holesData.length, onChange])
+  }, [courseData.number_of_holes, holesData.length, onChange, isEdit])
+
+  // Ensure we always have valid holes data to work with
+  const workingHolesData = holesData && holesData.length > 0 ? holesData : []
 
   const handleHoleChange = (holeNumber, data) => {
     const updatedHoles = [...holesData]
@@ -82,13 +115,13 @@ const ScorecardEntry = ({
 
   // Calculate statistics
   const calculateStats = () => {
-    const completedHoles = holesData.filter(h => h.adjusted_gross_score > 0)
+    const completedHoles = workingHolesData.filter(h => h.adjusted_gross_score > 0)
     const totalScore = completedHoles.reduce((sum, h) => sum + h.adjusted_gross_score, 0)
     const totalPar = completedHoles.reduce((sum, h) => sum + h.par, 0)
     const totalPutts = completedHoles.reduce((sum, h) => sum + (h.putts || 0), 0)
-    const fairwaysHit = holesData.filter(h => h.par > 3 && h.fairway_hit).length
-    const possibleFairways = holesData.filter(h => h.par > 3).length
-    const greensHit = holesData.filter(h => h.gir_flag).length
+    const fairwaysHit = workingHolesData.filter(h => h.par > 3 && h.fairway_hit).length
+    const possibleFairways = workingHolesData.filter(h => h.par > 3).length
+    const greensHit = workingHolesData.filter(h => h.gir_flag).length
     
     return {
       holesCompleted: completedHoles.length,
@@ -98,43 +131,66 @@ const ScorecardEntry = ({
       fairwaysHit,
       possibleFairways,
       greensHit,
-      totalHoles: holesData.length
+      totalHoles: workingHolesData.length || (courseData.number_of_holes || 18)
     }
   }
 
   const stats = calculateStats()
   const isComplete = stats.holesCompleted === (courseData.number_of_holes || 18)
 
-  // Touch handling for swipe navigation
-  const [touchStart, setTouchStart] = useState(null)
-  const [touchEnd, setTouchEnd] = useState(null)
-  const minSwipeDistance = 50
-
-  const onTouchStart = (e) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const onTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > minSwipeDistance
-    const isRightSwipe = distance < -minSwipeDistance
-    
-    if (isLeftSwipe && viewMode === 'single') {
-      navigateHole('next')
-    }
-    if (isRightSwipe && viewMode === 'single') {
-      navigateHole('prev')
-    }
+  // If editing and no holes data, show message
+  if (isEdit && workingHolesData.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="mb-4">
+            <svg className="w-16 h-16 text-yellow-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">No Hole Data Found</h2>
+          <p className="text-gray-400 mb-6">This round doesn't have any hole-by-hole data. Would you like to add scores now?</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={onBack}
+              className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Go Back
+            </button>
+            <button
+              onClick={() => {
+                // Initialize holes for editing
+                const defaultHoles = []
+                const numHoles = courseData.number_of_holes || 18
+                const standardPars = [4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 3, 5, 4, 4, 4, 3, 5]
+                
+                for (let i = 1; i <= numHoles; i++) {
+                  defaultHoles.push({
+                    hole_number: i,
+                    par: standardPars[i - 1] || 4,
+                    stroke_allocation: i,
+                    adjusted_gross_score: 0,
+                    putts: 0,
+                    fairway_hit: false,
+                    gir_flag: false,
+                    drive_accuracy: null
+                  })
+                }
+                
+                onChange(defaultHoles)
+              }}
+              className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+            >
+              Add Hole Data
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 relative">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-gray-900 border-b border-gray-700 px-4 py-3">
         <div className="flex items-center justify-between mb-3">
@@ -243,7 +299,7 @@ const ScorecardEntry = ({
                   const holeNum = viewMode === 'single' 
                     ? (currentHole > 9 ? i + 10 : i + 1)
                     : i + 1
-                  const hole = holesData.find(h => h.hole_number === holeNum)
+                  const hole = workingHolesData.find(h => h.hole_number === holeNum)
                   const isCompleted = hole?.adjusted_gross_score > 0
                   
                   return (
@@ -280,21 +336,31 @@ const ScorecardEntry = ({
             </div>
 
             {/* Current Hole Card */}
-            {holesData[currentHole - 1] && (
-              <HoleEntryCard
-                hole={holesData[currentHole - 1]}
-                data={holesData[currentHole - 1]}
-                onChange={handleHoleChange}
-                expanded={expandedHoles.has(currentHole)}
-                onToggleExpanded={() => toggleExpanded(currentHole)}
-                isActive={true}
-              />
+            {workingHolesData.length > 0 ? (
+              workingHolesData[currentHole - 1] ? (
+                <HoleEntryCard
+                  hole={workingHolesData[currentHole - 1]}
+                  data={workingHolesData[currentHole - 1]}
+                  onChange={handleHoleChange}
+                  expanded={expandedHoles.has(currentHole)}
+                  onToggleExpanded={() => toggleExpanded(currentHole)}
+                  isActive={true}
+                />
+              ) : (
+                <div className="bg-gray-800 rounded-xl p-6 text-center">
+                  <p className="text-gray-400">No data for hole {currentHole}</p>
+                </div>
+              )
+            ) : (
+              <div className="bg-gray-800 rounded-xl p-6 text-center">
+                <p className="text-gray-400">No holes data available</p>
+              </div>
             )}
           </div>
         ) : viewMode === 'grid' ? (
           /* Grid View */
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {holesData.map((hole) => (
+            {workingHolesData.map((hole) => (
               <HoleEntryCard
                 key={hole.hole_number}
                 hole={hole}
@@ -341,19 +407,19 @@ const ScorecardEntry = ({
 
                     {/* Par Row */}
                     <div className="col-span-1 font-medium text-yellow-400 p-2 bg-gray-900/50">PAR</div>
-                    {holesData.slice(0, 9).map((hole) => (
+                    {workingHolesData.slice(0, 9).map((hole) => (
                       <div key={`p${hole.hole_number}`} className="col-span-1 text-yellow-400 text-center p-2 bg-gray-900/50 border-l border-gray-700">
                         {hole.par}
                       </div>
                     ))}
                     <div className="col-span-1 text-yellow-400 font-semibold text-center p-2 bg-gray-900/50 border-l border-gray-700">
-                      {holesData.slice(0, 9).reduce((sum, h) => sum + h.par, 0)}
+                      {workingHolesData.slice(0, 9).reduce((sum, h) => sum + h.par, 0)}
                     </div>
                     <div className="col-span-1 p-2 bg-gray-900/50 border-l border-gray-700"></div>
 
                     {/* Score Row */}
                     <div className="col-span-1 font-medium text-gray-300 p-2">SCORE</div>
-                    {holesData.slice(0, 9).map((hole) => (
+                    {workingHolesData.slice(0, 9).map((hole) => (
                       <div key={`s${hole.hole_number}`} className="col-span-1 text-center p-0 border-l border-gray-700">
                         {editingCell === `score-${hole.hole_number}` ? (
                           <input
@@ -378,17 +444,17 @@ const ScorecardEntry = ({
                     ))}
                     <div className={`col-span-1 font-semibold text-center p-2 border-l border-gray-700 ${
                       stats.totalScore > 0 ? getScoreColor(
-                        holesData.slice(0, 9).reduce((sum, h) => sum + h.adjusted_gross_score, 0),
-                        holesData.slice(0, 9).reduce((sum, h) => sum + h.par, 0)
+                        workingHolesData.slice(0, 9).reduce((sum, h) => sum + h.adjusted_gross_score, 0),
+                        workingHolesData.slice(0, 9).reduce((sum, h) => sum + h.par, 0)
                       ) : 'text-gray-400'
                     }`}>
-                      {holesData.slice(0, 9).reduce((sum, h) => sum + h.adjusted_gross_score, 0) || '−'}
+                      {workingHolesData.slice(0, 9).reduce((sum, h) => sum + h.adjusted_gross_score, 0) || '−'}
                     </div>
                     <div className="col-span-1 p-2 border-l border-gray-700"></div>
 
                     {/* Putts Row */}
                     <div className="col-span-1 font-medium text-gray-500 p-2 bg-gray-900/30">PUTTS</div>
-                    {holesData.slice(0, 9).map((hole) => (
+                    {workingHolesData.slice(0, 9).map((hole) => (
                       <div key={`pt${hole.hole_number}`} className="col-span-1 text-center p-0 bg-gray-900/30 border-l border-gray-700">
                         {editingCell === `putts-${hole.hole_number}` ? (
                           <input
@@ -410,13 +476,13 @@ const ScorecardEntry = ({
                       </div>
                     ))}
                     <div className="col-span-1 text-gray-400 text-center p-2 bg-gray-900/30 border-l border-gray-700">
-                      {holesData.slice(0, 9).reduce((sum, h) => sum + (h.putts || 0), 0) || ''}
+                      {workingHolesData.slice(0, 9).reduce((sum, h) => sum + (h.putts || 0), 0) || ''}
                     </div>
                     <div className="col-span-1 p-2 bg-gray-900/30 border-l border-gray-700"></div>
 
                     {/* FIR Row (Fairways in Regulation) */}
                     <div className="col-span-1 font-medium text-gray-500 p-2">FIR</div>
-                    {holesData.slice(0, 9).map((hole) => (
+                    {workingHolesData.slice(0, 9).map((hole) => (
                       <div key={`fir${hole.hole_number}`} className="col-span-1 text-center p-0 border-l border-gray-700">
                         {hole.par > 3 ? (
                           <button
@@ -433,13 +499,13 @@ const ScorecardEntry = ({
                       </div>
                     ))}
                     <div className="col-span-1 text-green-400 text-center p-2 border-l border-gray-700 font-medium">
-                      {holesData.slice(0, 9).filter(h => h.par > 3 && h.fairway_hit).length}/{holesData.slice(0, 9).filter(h => h.par > 3).length}
+                      {workingHolesData.slice(0, 9).filter(h => h.par > 3 && h.fairway_hit).length}/{workingHolesData.slice(0, 9).filter(h => h.par > 3).length}
                     </div>
                     <div className="col-span-1 p-2 border-l border-gray-700"></div>
 
                     {/* GIR Row (Greens in Regulation) */}
                     <div className="col-span-1 font-medium text-gray-500 p-2 bg-gray-900/30 rounded-bl-lg">GIR</div>
-                    {holesData.slice(0, 9).map((hole) => (
+                    {workingHolesData.slice(0, 9).map((hole) => (
                       <div key={`gir${hole.hole_number}`} className="col-span-1 text-center p-0 bg-gray-900/30 border-l border-gray-700">
                         <button
                           onClick={() => handleHoleChange(hole.hole_number, { gir_flag: !hole.gir_flag })}
@@ -452,14 +518,14 @@ const ScorecardEntry = ({
                       </div>
                     ))}
                     <div className="col-span-1 text-green-400 text-center p-2 bg-gray-900/30 border-l border-gray-700 font-medium">
-                      {holesData.slice(0, 9).filter(h => h.gir_flag).length}/9
+                      {workingHolesData.slice(0, 9).filter(h => h.gir_flag).length}/9
                     </div>
                     <div className="col-span-1 p-2 bg-gray-900/30 rounded-br-lg border-l border-gray-700"></div>
                   </div>
                 </div>
 
                 {/* Back 9 (if 18 holes) */}
-                {holesData.length > 9 && (
+                {workingHolesData.length > 9 && (
                   <div>
                     <div className="grid grid-cols-12 gap-0 text-xs">
                       {/* Headers */}
@@ -474,21 +540,21 @@ const ScorecardEntry = ({
 
                       {/* Par Row */}
                       <div className="col-span-1 font-medium text-yellow-400 p-2 bg-gray-900/50">PAR</div>
-                      {holesData.slice(9, 18).map((hole) => (
+                      {workingHolesData.slice(9, 18).map((hole) => (
                         <div key={`p${hole.hole_number}`} className="col-span-1 text-yellow-400 text-center p-2 bg-gray-900/50 border-l border-gray-700">
                           {hole.par}
                         </div>
                       ))}
                       <div className="col-span-1 text-yellow-400 font-semibold text-center p-2 bg-gray-900/50 border-l border-gray-700">
-                        {holesData.slice(9, 18).reduce((sum, h) => sum + h.par, 0)}
+                        {workingHolesData.slice(9, 18).reduce((sum, h) => sum + h.par, 0)}
                       </div>
                       <div className="col-span-1 text-yellow-400 font-bold text-center p-2 bg-gray-900/50 border-l border-gray-700">
-                        {holesData.reduce((sum, h) => sum + h.par, 0)}
+                        {workingHolesData.reduce((sum, h) => sum + h.par, 0)}
                       </div>
 
                       {/* Score Row */}
                       <div className="col-span-1 font-medium text-gray-300 p-2">SCORE</div>
-                      {holesData.slice(9, 18).map((hole) => (
+                      {workingHolesData.slice(9, 18).map((hole) => (
                         <div key={`s${hole.hole_number}`} className="col-span-1 text-center p-0 border-l border-gray-700">
                           {editingCell === `score-${hole.hole_number}` ? (
                             <input
@@ -513,11 +579,11 @@ const ScorecardEntry = ({
                       ))}
                       <div className={`col-span-1 font-semibold text-center p-2 border-l border-gray-700 ${
                         stats.totalScore > 0 ? getScoreColor(
-                          holesData.slice(9, 18).reduce((sum, h) => sum + h.adjusted_gross_score, 0),
-                          holesData.slice(9, 18).reduce((sum, h) => sum + h.par, 0)
+                          workingHolesData.slice(9, 18).reduce((sum, h) => sum + h.adjusted_gross_score, 0),
+                          workingHolesData.slice(9, 18).reduce((sum, h) => sum + h.par, 0)
                         ) : 'text-gray-400'
                       }`}>
-                        {holesData.slice(9, 18).reduce((sum, h) => sum + h.adjusted_gross_score, 0) || '−'}
+                        {workingHolesData.slice(9, 18).reduce((sum, h) => sum + h.adjusted_gross_score, 0) || '−'}
                       </div>
                       <div className={`col-span-1 font-bold text-center p-2 border-l border-gray-700 ${
                         stats.totalScore > 0 ? getScoreColor(stats.totalScore, stats.totalHoles * 4) : 'text-gray-400'
@@ -527,7 +593,7 @@ const ScorecardEntry = ({
 
                       {/* Putts Row */}
                       <div className="col-span-1 font-medium text-gray-500 p-2 bg-gray-900/30">PUTTS</div>
-                      {holesData.slice(9, 18).map((hole) => (
+                      {workingHolesData.slice(9, 18).map((hole) => (
                         <div key={`pt${hole.hole_number}`} className="col-span-1 text-center p-0 bg-gray-900/30 border-l border-gray-700">
                           {editingCell === `putts-${hole.hole_number}` ? (
                             <input
@@ -549,7 +615,7 @@ const ScorecardEntry = ({
                         </div>
                       ))}
                       <div className="col-span-1 text-gray-400 text-center p-2 bg-gray-900/30 border-l border-gray-700">
-                        {holesData.slice(9, 18).reduce((sum, h) => sum + (h.putts || 0), 0) || ''}
+                        {workingHolesData.slice(9, 18).reduce((sum, h) => sum + (h.putts || 0), 0) || ''}
                       </div>
                       <div className="col-span-1 text-gray-400 font-semibold text-center p-2 bg-gray-900/30 border-l border-gray-700">
                         {stats.totalPutts || ''}
@@ -557,7 +623,7 @@ const ScorecardEntry = ({
 
                       {/* FIR Row (Fairways in Regulation) */}
                       <div className="col-span-1 font-medium text-gray-500 p-2">FIR</div>
-                      {holesData.slice(9, 18).map((hole) => (
+                      {workingHolesData.slice(9, 18).map((hole) => (
                         <div key={`fir${hole.hole_number}`} className="col-span-1 text-center p-0 border-l border-gray-700">
                           {hole.par > 3 ? (
                             <button
@@ -574,7 +640,7 @@ const ScorecardEntry = ({
                         </div>
                       ))}
                       <div className="col-span-1 text-green-400 text-center p-2 border-l border-gray-700 font-medium">
-                        {holesData.slice(9, 18).filter(h => h.par > 3 && h.fairway_hit).length}/{holesData.slice(9, 18).filter(h => h.par > 3).length}
+                        {workingHolesData.slice(9, 18).filter(h => h.par > 3 && h.fairway_hit).length}/{workingHolesData.slice(9, 18).filter(h => h.par > 3).length}
                       </div>
                       <div className="col-span-1 text-green-400 font-bold text-center p-2 border-l border-gray-700">
                         {stats.fairwaysHit}/{stats.possibleFairways}
@@ -582,7 +648,7 @@ const ScorecardEntry = ({
 
                       {/* GIR Row (Greens in Regulation) */}
                       <div className="col-span-1 font-medium text-gray-500 p-2 bg-gray-900/30 rounded-bl-lg">GIR</div>
-                      {holesData.slice(9, 18).map((hole) => (
+                      {workingHolesData.slice(9, 18).map((hole) => (
                         <div key={`gir${hole.hole_number}`} className="col-span-1 text-center p-0 bg-gray-900/30 border-l border-gray-700">
                           <button
                             onClick={() => handleHoleChange(hole.hole_number, { gir_flag: !hole.gir_flag })}
@@ -595,7 +661,7 @@ const ScorecardEntry = ({
                         </div>
                       ))}
                       <div className="col-span-1 text-green-400 text-center p-2 bg-gray-900/30 border-l border-gray-700 font-medium">
-                        {holesData.slice(9, 18).filter(h => h.gir_flag).length}/9
+                        {workingHolesData.slice(9, 18).filter(h => h.gir_flag).length}/9
                       </div>
                       <div className="col-span-1 text-green-400 font-bold text-center p-2 bg-gray-900/30 rounded-br-lg border-l border-gray-700">
                         {stats.greensHit}/{stats.totalHoles}

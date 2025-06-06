@@ -16,8 +16,18 @@ export const makeAuthenticatedRequest = async (queryBuilder) => {
       if (refreshError || !refreshData.session) {
         // Refresh failed, user needs to re-login
         console.error('Session refresh failed:', refreshError)
-        await supabase.auth.signOut()
-        window.location.href = '/'
+        
+        // Add a flag to prevent redirect loops
+        const isRedirecting = sessionStorage.getItem('auth-redirecting')
+        if (!isRedirecting) {
+          sessionStorage.setItem('auth-redirecting', 'true')
+          await supabase.auth.signOut()
+          // Clear the flag after a delay to allow future redirects
+          setTimeout(() => sessionStorage.removeItem('auth-redirecting'), 1000)
+          // Use replace to prevent back button issues
+          const loginPath = window.location.pathname.includes('/ghin-stats') ? '/ghin-stats/login' : '/login'
+          window.location.replace(loginPath)
+        }
         return result
       }
       

@@ -13,6 +13,7 @@ import ManageRounds from './components/ManageRounds'
 import Loading from './components/ui/Loading'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoadingRecovery from './components/LoadingRecovery'
+import SessionDebug from './components/SessionDebug'
 import { useSessionMonitor } from './hooks/useSessionMonitor'
 
 // Protected route wrapper
@@ -31,22 +32,35 @@ const ProtectedRoute = ({ children }) => {
 
 // App router component
 const AppRouter = () => {
-  const { user, loading } = useAuth()
+  const { user, loading, sessionValidated } = useAuth()
   
   // Monitor session health for authenticated users
   useSessionMonitor()
   
-  if (loading) return (
-    <LoadingRecovery loading={loading}>
+  // Wait for both loading and session validation to complete
+  const isInitializing = loading || !sessionValidated
+  
+  if (isInitializing) return (
+    <LoadingRecovery loading={isInitializing} timeout={15000}>
       <Loading />
     </LoadingRecovery>
   )
   
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={user ? <Navigate to={`/profile/${user.id}`} replace /> : <Login />} />
-      <Route path="/login" element={user ? <Navigate to={`/profile/${user.id}`} replace /> : <Login />} />
+    <>
+      <SessionDebug />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={
+          user && !sessionStorage.getItem('auth-redirecting') 
+            ? <Navigate to={`/profile/${user.id}`} replace /> 
+            : <Login />
+        } />
+      <Route path="/login" element={
+        user && !sessionStorage.getItem('auth-redirecting')
+          ? <Navigate to={`/profile/${user.id}`} replace /> 
+          : <Login />
+      } />
       <Route path="/logout" element={<Logout />} />
       <Route path="/profiles/public" element={<PublicProfilesList />} />
       <Route path="/profile/:userId" element={<Profile />} />
@@ -73,6 +87,7 @@ const AppRouter = () => {
         </ProtectedRoute>
       } />
     </Routes>
+    </>
   )
 }
 

@@ -25,6 +25,13 @@ const CourseInfoForm = ({ data = {}, onChange, onNext }) => {
     { value: 'Green', label: 'Green', color: 'bg-green-600' }
   ]
 
+  // Sync searchTerm with course name when data changes
+  useEffect(() => {
+    if (data.course_name) {
+      setSearchTerm(data.course_name)
+    }
+  }, [data.course_name])
+
   // Fetch recent courses for suggestions
   useEffect(() => {
     const fetchRecentCourses = async () => {

@@ -43,13 +43,16 @@ const EditRound = () => {
         const { round, holeDetails } = result.data
         
         // Set course data from round
+        // Format the date for the date input (YYYY-MM-DD)
+        const playedAtDate = round.played_at ? round.played_at.split('T')[0] : '';
+        
         setCourseData({
           course_name: round.course_name,
           facility_name: round.facility_name,
           course_rating: round.course_rating,
           slope_rating: round.slope_rating,
           tee_name: round.tee_name,
-          played_at: round.played_at,
+          played_at: playedAtDate,
           number_of_holes: round.number_of_holes
         })
         
@@ -156,7 +159,7 @@ const EditRound = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className={currentStep === 2 ? "" : "min-h-screen bg-gray-900"}>
       {/* Header for step 1 only */}
       {currentStep === 1 && (
         <div className="p-4 border-b border-gray-700">
@@ -208,8 +211,8 @@ const EditRound = () => {
       )}
 
       {/* Step content */}
-      <div className={currentStep === 1 ? 'p-4 max-w-lg mx-auto' : ''}>
-        {currentStep === 1 && (
+      {currentStep === 1 && (
+        <div className="p-4 max-w-lg mx-auto">
           <Card className="p-6">
             <CourseInfoForm
               data={courseData}
@@ -217,28 +220,29 @@ const EditRound = () => {
               onNext={handleCourseSubmit}
             />
           </Card>
-        )}
+        </div>
+      )}
 
-        {currentStep === 2 && (
-          <ScorecardEntry
-            courseData={courseData}
-            holesData={holesData}
-            onChange={setHolesData}
-            onComplete={handleScorecardComplete}
-            onBack={handleBack}
-          />
-        )}
+      {currentStep === 2 && (
+        <ScorecardEntry
+          courseData={courseData}
+          holesData={holesData}
+          onChange={setHolesData}
+          onComplete={handleScorecardComplete}
+          onBack={handleBack}
+          isEdit={true}
+        />
+      )}
 
-        {currentStep === 3 && (
-          <RoundReview
-            courseData={courseData}
-            holesData={holesData}
-            onSubmit={handleSubmit}
-            onEdit={handleBack}
-            isEdit={true}
-          />
-        )}
-      </div>
+      {currentStep === 3 && (
+        <RoundReview
+          courseData={courseData}
+          holesData={holesData}
+          onSubmit={handleSubmit}
+          onEdit={handleBack}
+          isEdit={true}
+        />
+      )}
     </div>
   )
 }

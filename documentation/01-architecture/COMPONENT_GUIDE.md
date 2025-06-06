@@ -46,8 +46,8 @@ const [activeView, setActiveView] = useState('round')
 **Data Query**:
 ```javascript
 supabase
-  .from('scores')
-  .select(`*, statistics(*)`)
+  .from('rounds')
+  .select(`*, round_statistics(*)`)
   .eq('number_of_holes', 18)
 ```
 

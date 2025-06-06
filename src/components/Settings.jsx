@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Layout from './Layout'
 import Card from './ui/Card'
-import { importGolfRounds, formatImportSummary } from '../services/importService'
+import { importGolfRoundsBatched, formatImportSummary } from '../services/importServiceBatchedFixed'
 
 const Settings = () => {
   const navigate = useNavigate()
@@ -130,9 +130,9 @@ const Settings = () => {
       
       const scores = data.scores || [];
       
-      console.log('📥 Calling importGolfRounds with', scores.length, 'scores')
-      // Import the rounds into Supabase
-      const importResults = await importGolfRounds(scores, user.id)
+      console.log('📥 Calling batched import with', scores.length, 'scores')
+      // Import the rounds into Supabase using batched operations
+      const importResults = await importGolfRoundsBatched(scores, user.id)
       console.log('📥 Import results:', importResults)
       
       // Format the results for display

@@ -12,14 +12,14 @@ The application uses Supabase's anonymous authentication (public anon key). No u
 ```javascript
 // Get all scores
 const { data, error } = await supabase
-  .from('scores')
+  .from('rounds')
   .select('*')
   .eq('number_of_holes', 18)
   .order('played_at', { ascending: false })
 
 // Get scores with statistics
 const { data, error } = await supabase
-  .from('scores')
+  .from('rounds')
   .select(`
     *,
     statistics(*)
@@ -32,7 +32,7 @@ const { data, error } = await supabase
 #### Date Range Filter
 ```javascript
 let query = supabase
-  .from('scores')
+  .from('rounds')
   .select('*')
   .eq('number_of_holes', 18)
 
@@ -69,7 +69,7 @@ const { data, error } = await supabase
 ```javascript
 // First get score IDs for the course
 const { data: scoreData } = await supabase
-  .from('scores')
+  .from('rounds')
   .select('id')
   .eq('course_name', courseName)
   .eq('number_of_holes', 18)

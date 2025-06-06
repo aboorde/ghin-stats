@@ -1,94 +1,129 @@
-# Database Structure Documentation
+# Tables in Supabase
 
-## IMPORTANT: Current Production Tables
+# hole_details
 
-The actual database uses the following table names and structure:
+| Name | Format | Type |
+|------|--------|------|
+| id | bigint | number |
+| round_id | bigint | number |
+| user_id | uuid | string |
+| hole_number | integer | number |
+| par | integer | number |
+| stroke_allocation | integer | number |
+| adjusted_gross_score | integer | number |
+| raw_score | integer | number |
+| most_likely_score | integer | number |
+| putts | integer | number |
+| fairway_hit | boolean | boolean |
+| gir_flag | boolean | boolean |
+| drive_accuracy | character varying | string |
+| approach_shot_accuracy | character varying | string |
+| x_hole | boolean | boolean |
+| created_at | timestamp with time zone | string |
+| updated_at | timestamp with time zone | string |
 
-### 1. `rounds` table
-Primary table for golf rounds. Key fields include:
-- `id` - Unique identifier from external API
-- `user_id` - Foreign key to users table
-- `golfer_id` - External golfer ID
-- `played_at` - Date the round was played
-- `adjusted_gross_score` - Final adjusted score
-- `differential` - Handicap differential
-- `course_name` - Name of the golf course
-- `tee_name` - Which tees were played
-- `course_rating` - Course difficulty rating
-- `slope_rating` - Course slope rating
-- `number_of_holes` - 9 or 18 holes
-- And more...
 
-### 2. `hole_details` table
-Stores individual hole scores. Key fields:
-- `id` - Unique identifier
-- `round_id` - Foreign key to rounds table
-- `user_id` - Foreign key to users table
-- `hole_number` - Hole number (1-18)
-- `par` - Par for the hole
-- `adjusted_gross_score` - Score on this hole
-- `raw_score` - Original score before adjustments
-- `putts` - Number of putts
-- `fairway_hit` - Whether fairway was hit
-- `gir_flag` - Green in regulation flag
+# round_statistics
 
-### 3. `round_statistics` table
-Stores round statistics. Key fields:
-- `round_id` - Foreign key to rounds table
-- `user_id` - Foreign key to users table
-- `putts_total` - Total putts for the round
-- Various percentage fields for putting, scoring, accuracy, etc.
+| Name | Format | Type |
+|------|--------|------|
+| id | uuid | string |
+| round_id | bigint | number |
+| user_id | uuid | string |
+| putts_total | character varying | string |
+| one_putt_or_better_percent | character varying | string |
+| two_putt_percent | character varying | string |
+| three_putt_or_worse_percent | character varying | string |
+| two_putt_or_better_percent | character varying | string |
+| up_and_downs_total | character varying | string |
+| par3s_average | character varying | string |
+| par4s_average | character varying | string |
+| par5s_average | character varying | string |
+| pars_percent | character varying | string |
+| birdies_or_better_percent | character varying | string |
+| bogeys_percent | character varying | string |
+| double_bogeys_percent | character varying | string |
+| triple_bogeys_or_worse_percent | character varying | string |
+| fairway_hits_percent | character varying | string |
+| missed_left_percent | character varying | string |
+| missed_right_percent | character varying | string |
+| missed_long_percent | character varying | string |
+| missed_short_percent | character varying | string |
+| gir_percent | character varying | string |
+| missed_left_approach_shot_accuracy_percent | character varying | string |
+| missed_right_approach_shot_accuracy_percent | character varying | string |
+| missed_long_approach_shot_accuracy_percent | character varying | string |
+| missed_short_approach_shot_accuracy_percent | character varying | string |
+| missed_general_approach_shot_accuracy_percent | character varying | string |
+| last_stats_update_date | character varying | string |
+| last_stats_update_type | character varying | string |
+| created_at | timestamp with time zone | string |
+| updated_at | timestamp with time zone | string |
 
-### 4. `users` table
-User profiles and settings
+# rounds
 
-### 5. `adjustments` table
-Stores PCC and other scoring adjustments
+| Name | Format | Type |
+|------|--------|------|
+| id | bigint | number |
+| user_id | uuid | string |
+| order_number | integer | number |
+| score_day_order | integer | number |
+| gender | character varying | string |
+| status | character varying | string |
+| is_manual | boolean | boolean |
+| number_of_holes | integer | number |
+| number_of_played_holes | integer | number |
+| golfer_id | bigint | number |
+| facility_name | text | string |
+| course_id | character varying | string |
+| course_name | text | string |
+| front9_course_name | text | string |
+| back9_course_name | text | string |
+| adjusted_gross_score | integer | number |
+| front9_adjusted | integer | number |
+| back9_adjusted | integer | number |
+| course_rating | numeric | number |
+| slope_rating | integer | number |
+| front9_course_rating | numeric | number |
+| back9_course_rating | numeric | number |
+| front9_slope_rating | numeric | number |
+| back9_slope_rating | numeric | number |
+| tee_name | text | string |
+| tee_set_id | character varying | string |
+| tee_set_side | character varying | string |
+| front9_tee_name | text | string |
+| back9_tee_name | text | string |
+| differential | numeric | number |
+| unadjusted_differential | numeric | number |
+| scaled_up_differential | numeric | number |
+| adjusted_scaled_up_differential | numeric | number |
+| net_score | integer | number |
+| net_score_differential | numeric | number |
+| course_handicap | integer | number |
+| score_type | character varying | string |
+| score_type_display_full | character varying | string |
+| score_type_display_short | character varying | string |
+| penalty | numeric | number |
+| penalty_type | character varying | string |
+| penalty_method | character varying | string |
+| played_at | date | string |
+| posted_at | timestamp with time zone | string |
+| posted_on_home_course | boolean | boolean |
+| season_start_date_at | character varying | string |
+| season_end_date_at | character varying | string |
+| course_display_value | text | string |
+| ghin_course_name_display | text | string |
+| edited | boolean | boolean |
+| used | boolean | boolean |
+| revision | boolean | boolean |
+| exceptional | boolean | boolean |
+| is_recent | boolean | boolean |
+| short_course | boolean | boolean |
+| challenge_available | boolean | boolean |
+| parent_id | bigint | number |
+| pcc | numeric | number |
+| adjustments | jsonb | json |
+| message_club_authorized | text | string |
+| created_at | timestamp with time zone | string |
+| updated_at | timestamp with time zone | string |
 
-## Common Mistakes to Avoid
-
-1. **DO NOT** confuse with older codebase that uses `scores` table - the new structure uses `rounds`
-2. **DO NOT** confuse with older codebase that uses `statistics` table - the new structure uses `round_statistics`
-3. Always use `round_id` as the foreign key for related tables
-4. **DO NOT** assume table structure from older code - always check actual database
-
-## Import Service Considerations
-
-When importing data from external APIs:
-- Map external fields to the existing database structure
-- Use `rounds` table as the primary table
-- Use `round_id` as the foreign key for related tables
-- Include `created_at` and `updated_at` timestamps
-- Parse numeric fields (parseInt/parseFloat) before inserting
-- Handle null values appropriately
-
-## Debugging Import Issues
-
-If imports are not working:
-1. Check console for errors - Supabase errors are descriptive
-2. Verify table names match actual database
-3. Ensure all required fields are included
-4. Check foreign key relationships
-5. Verify Row Level Security (RLS) policies allow inserts
-
-## Example Import Code
-
-```javascript
-// Correct table names
-const { data, error } = await supabase
-  .from('rounds')
-  .insert({
-    id: round.id,
-    user_id: userId,
-    // ... other fields
-  })
-
-// Related tables use round_id
-const { error: statsError } = await supabase
-  .from('round_statistics')
-  .insert({
-    round_id: round.id,
-    user_id: userId,
-    // ... other fields
-  })
-```

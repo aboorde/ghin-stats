@@ -71,7 +71,7 @@ Components perform client-side aggregation:
 ### Basic Round Query
 ```javascript
 supabase
-  .from('scores')
+  .from('rounds')
   .select('*')
   .eq('number_of_holes', 18)
   .order('played_at', { ascending: false })
@@ -80,10 +80,10 @@ supabase
 ### Query with Related Data
 ```javascript
 supabase
-  .from('scores')
+  .from('rounds')
   .select(`
     *,
-    statistics(*),
+    round_statistics(*),
     hole_details(*)
   `)
   .eq('number_of_holes', 18)

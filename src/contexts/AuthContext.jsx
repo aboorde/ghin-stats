@@ -27,38 +27,57 @@ export const AuthProvider = ({ children }) => {
         // Clear any redirect flags when starting fresh
         sessionStorage.removeItem('auth-redirecting')
         
-        const { data: { session }, error } = await supabase.auth.getSession()
+        console.log('Getting session from Supabase...')
+        
+        // Add timeout for the getSession call
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session fetch timeout')), 10000)
+        )
+        
+        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]).catch(err => {
+          console.error('Session fetch failed:', err)
+          return { data: { session: null }, error: err }
+        })
+        
+        console.log('Session fetch completed:', { hasSession: !!session, hasError: !!error })
         
         if (error) {
           console.error('Error getting session:', error)
           // Clear any corrupted auth state
-          if (error.message?.includes('invalid') || error.message?.includes('malformed')) {
-            console.warn('Clearing corrupted auth state...')
-            localStorage.removeItem('ghin-stats-auth')
+          if (error.message?.includes('invalid') || error.message?.includes('malformed') || error.message?.includes('timeout')) {
+            console.warn('Clearing corrupted/expired auth state...')
+            // Clear all Supabase-related items from localStorage
+            const keysToRemove = []
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i)
+              if (key && key.includes('supabase')) {
+                keysToRemove.push(key)
+              }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key))
             sessionStorage.clear()
           }
+          setUser(null)
+          setProfile(null)
           setSessionValidated(true)
         } else {
           // Validate the session is actually valid
           if (session?.user) {
+            console.log('Session found, validating...')
             try {
-              // Quick check to ensure the session is valid
-              const { data, error: checkError } = await supabase.auth.getUser()
-              if (checkError || !data.user) {
-                console.warn('Session appears invalid, clearing...')
-                await supabase.auth.signOut()
-                setUser(null)
-                setProfile(null)
-              } else {
-                setUser(session.user)
-                await fetchProfile(session.user.id)
-              }
+              // Skip additional validation on GitHub Pages to avoid hanging
+              // The session from getSession is sufficient
+              setUser(session.user)
+              console.log('User set, fetching profile...')
+              await fetchProfile(session.user.id)
             } catch (validationError) {
               console.error('Session validation error:', validationError)
               setUser(null)
               setProfile(null)
             }
           } else {
+            console.log('No session found')
             setUser(null)
             setProfile(null)
           }
@@ -71,6 +90,7 @@ export const AuthProvider = ({ children }) => {
         setSessionValidated(true)
       } finally {
         // Always set loading to false, even on error
+        console.log('Auth initialization complete')
         setLoading(false)
       }
     }
@@ -120,13 +140,18 @@ export const AuthProvider = ({ children }) => {
 
   const fetchProfile = async (userId) => {
     try {
+      console.log('Fetching profile for user:', userId)
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Profile fetch error:', error)
+        throw error
+      }
+      console.log('Profile fetched successfully')
       setProfile(data)
     } catch (error) {
       console.error('Error fetching profile:', error)

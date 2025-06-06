@@ -37,14 +37,27 @@ const AppRouter = () => {
   // Monitor session health for authenticated users
   useSessionMonitor()
   
+  // Add debugging for GitHub Pages
+  useEffect(() => {
+    console.log('AppRouter state:', { 
+      loading, 
+      sessionValidated, 
+      hasUser: !!user,
+      pathname: window.location.pathname 
+    })
+  }, [loading, sessionValidated, user])
+  
   // Wait for both loading and session validation to complete
   const isInitializing = loading || !sessionValidated
   
-  if (isInitializing) return (
-    <LoadingRecovery loading={isInitializing} timeout={15000}>
-      <Loading />
-    </LoadingRecovery>
-  )
+  if (isInitializing) {
+    console.log('App is initializing...', { loading, sessionValidated })
+    return (
+      <LoadingRecovery loading={isInitializing} timeout={15000}>
+        <Loading />
+      </LoadingRecovery>
+    )
+  }
   
   return (
     <>

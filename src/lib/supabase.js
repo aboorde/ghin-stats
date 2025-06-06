@@ -7,6 +7,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Log environment for debugging
+console.log('Initializing Supabase client...', {
+  url: supabaseUrl?.substring(0, 30) + '...',
+  hasKey: !!supabaseAnonKey,
+  environment: window.location.hostname
+});
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -15,15 +22,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: window.localStorage,
     storageKey: 'ghin-stats-auth',
     flowType: 'pkce', // PKCE flow for enhanced security
-    debug: false // Ensure debug is off in production
+    debug: window.location.hostname === 'localhost' // Debug in dev only
   },
   global: {
     headers: {
       'x-client-info': 'ghin-stats',
       'x-requested-with': 'XMLHttpRequest' // CSRF protection
     }
+  },
+  // Add timeout for requests
+  db: {
+    schema: 'public'
   }
 });
+
+console.log('Supabase client initialized');
 
 // Verify we're using HTTPS in production
 if (window.location.hostname !== 'localhost' && window.location.protocol !== 'https:') {

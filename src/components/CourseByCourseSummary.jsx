@@ -53,13 +53,40 @@ const CourseByCourseSummary = ({ userId }) => {
 
       if (error) throw error
 
-      // Group by course
+      // Normalize course names to combine variations
+      const normalizeCourse = (name) => {
+        if (!name) return name
+        
+        // Pine Valley variations
+        if (name.includes('Pine Valley')) {
+          return 'Pine Valley CC'
+        }
+        
+        // Handle common abbreviations and variations
+        const normalizedName = name
+          .replace(/Country Club/gi, 'CC')
+          .replace(/Golf Club/gi, 'GC')
+          .replace(/Golf Course/gi, 'GC')
+          .replace(/\s+\/\s+.*$/, '') // Remove "/ Same Name" patterns
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim()
+        
+        // Additional specific course normalizations can be added here
+        // Example mappings:
+        // if (normalizedName.includes('Augusta')) return 'Augusta National GC'
+        // if (normalizedName.includes('Pebble Beach')) return 'Pebble Beach GL'
+        
+        return normalizedName
+      }
+
+      // Group by normalized course name
       const courseGroups = {}
       rounds.forEach(round => {
-        if (!courseGroups[round.course_name]) {
-          courseGroups[round.course_name] = []
+        const normalizedName = normalizeCourse(round.course_name)
+        if (!courseGroups[normalizedName]) {
+          courseGroups[normalizedName] = []
         }
-        courseGroups[round.course_name].push(round)
+        courseGroups[normalizedName].push(round)
       })
 
       // Create Course models
@@ -117,11 +144,45 @@ const CourseByCourseSummary = ({ userId }) => {
 
   const fetchCourseDetails = useCallback(async (course) => {
     try {
+      // Get all possible course name variations
+      const getCourseNameVariations = (normalizedName) => {
+        // Pine Valley specific variations
+        if (normalizedName === 'Pine Valley CC') {
+          return [
+            'Pine Valley Country Club',
+            'Pine Valley CC / Pine Valley CC',
+            'Pine Valley CC',
+            'Pine Valley Golf Club' // Just in case
+          ]
+        }
+        
+        // For other courses, generate common variations
+        const variations = [normalizedName]
+        
+        // Add variations with full names
+        if (normalizedName.includes(' CC')) {
+          variations.push(normalizedName.replace(' CC', ' Country Club'))
+        }
+        if (normalizedName.includes(' GC')) {
+          variations.push(
+            normalizedName.replace(' GC', ' Golf Club'),
+            normalizedName.replace(' GC', ' Golf Course')
+          )
+        }
+        
+        // Add variation with duplicate name pattern
+        variations.push(`${normalizedName} / ${normalizedName}`)
+        
+        return [...new Set(variations)] // Remove duplicates
+      }
+
+      const courseVariations = getCourseNameVariations(course.name)
+
       // Get detailed round and hole data for selected course
       let roundQuery = supabase
         .from('rounds')
         .select('id, played_at, adjusted_gross_score, differential')
-        .eq('course_name', course.name)
+        .in('course_name', courseVariations)
         .eq('number_of_holes', 18)
         .order('played_at', { ascending: true })
 

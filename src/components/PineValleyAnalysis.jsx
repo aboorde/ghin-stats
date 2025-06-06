@@ -137,10 +137,10 @@ export default function PineValleyAnalysis({ userId }) {
       
       // Base query for Pine Valley rounds
       let query = supabase
-        .from('scores')
+        .from('rounds')
         .select(`
           *,
-          statistics(*),
+          round_statistics(*),
           hole_details(*)
         `)
         .eq('course_name', 'Pine Valley CC')

@@ -278,6 +278,7 @@ export const createCustomTooltip = (props) => {
  * @returns {Array} Formatted data for line chart
  */
 export const prepareYearTrendData = (yearData) => {
+  console.log("WA", {yearData})
   return yearData.map(year => ({
     year: year.year,
     avgScore: parseFloat(year.avgScore?.toFixed(1) || 0),

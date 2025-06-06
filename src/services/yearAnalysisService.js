@@ -15,6 +15,7 @@ import { normalizeCourseData } from '../utils/dataHelpers'
  * @returns {Object} Object with year as key and Year instance as value
  */
 export const aggregateYearlyStatistics = (scores) => {
+  console.log("scores", {scores})
   if (!scores || scores.length === 0) {
     return {}
   }
@@ -24,7 +25,7 @@ export const aggregateYearlyStatistics = (scores) => {
   
   // Group rounds by year
   const yearGroups = {}
-  
+  console.log("normalizedScores", {normalizedScores})
   normalizedScores.forEach(round => {
     const year = new Date(round.played_at).getFullYear()
     
@@ -37,7 +38,7 @@ export const aggregateYearlyStatistics = (scores) => {
   
   // Create Year instances for each year
   const yearStats = {}
-  
+  console.log("yearGroups", {yearGroups})
   Object.entries(yearGroups).forEach(([year, rounds]) => {
     yearStats[year] = Year.fromRounds(parseInt(year), rounds)
   })
@@ -51,6 +52,7 @@ export const aggregateYearlyStatistics = (scores) => {
  * @returns {Array} Array of year data sorted by year
  */
 export const formatYearDataForCharts = (yearStats) => {
+  console.log("AA", {yearStats})
   return Object.values(yearStats)
     .map(year => year.toJSON())
     .sort((a, b) => a.year - b.year)

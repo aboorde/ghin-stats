@@ -37,13 +37,13 @@ const YearByYearAnalysis = ({ userId }) => {
     try {
       setLoading(true)
       let query = supabase
-        .from('scores')
+        .from('rounds')
         .select(`
           played_at,
           adjusted_gross_score,
           differential,
           course_name,
-          statistics(
+          round_statistics(
             par3s_average,
             par4s_average,
             par5s_average,
@@ -67,6 +67,7 @@ const YearByYearAnalysis = ({ userId }) => {
 
       // Use service to aggregate year statistics
       const aggregatedYearStats = aggregateYearlyStatistics(data || [])
+      console.log(" aggregatedYearStats", {aggregatedYearStats})
       setYearStats(aggregatedYearStats)
       
       // Set most recent year as selected by default

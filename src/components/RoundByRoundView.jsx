@@ -30,10 +30,10 @@ const RoundByRoundView = ({ userId }) => {
     try {
       setLoading(true)
       let query = supabase
-        .from('scores')
+        .from('rounds')
         .select(`
           *,
-          statistics(
+          round_statistics(
             pars_percent,
             bogeys_percent,
             double_bogeys_percent,

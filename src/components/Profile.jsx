@@ -74,7 +74,7 @@ const Profile = () => {
       
       // Check if user has any rounds
       const { count } = await supabase
-        .from('scores')
+        .from('rounds')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
       
@@ -82,16 +82,16 @@ const Profile = () => {
       
       // Calculate handicap index if not stored
       if (profileData.handicap_index === null || profileData.handicap_index === undefined) {
-        const { data: scores } = await supabase
-          .from('scores')
+        const { data: rounds } = await supabase
+          .from('rounds')
           .select('differential, played_at')
           .eq('user_id', userId)
           .eq('number_of_holes', 18)
           .order('played_at', { ascending: false })
           .limit(20)
         
-        if (scores && scores.length >= 3) {
-          const calculatedIndex = calculateHandicapIndex(scores)
+        if (rounds && rounds.length >= 3) {
+          const calculatedIndex = calculateHandicapIndex(rounds)
           setHandicapIndex(calculatedIndex)
         }
       } else {

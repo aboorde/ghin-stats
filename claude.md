@@ -29,6 +29,15 @@
    - "Possible" (when suggested by partial evidence)
    - "Unknown" (when no evidence was found)
 
+# Pine Valley Golf Club Course Information
+
+| Tee | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | Out | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | In | Tot |
+|-----|---|---|---|---|---|---|---|---|---|-----|----|----|----|----|----|----|----|----|----|----|-----|
+| **Yds** | 331 | 487 | 335 | 129 | 379 | 376 | 142 | 456 | 291 | 2926 | 447 | 356 | 191 | 358 | 466 | 388 | 330 | 168 | 367 | 3071 | 5997 |
+| **Par** | 4 | 5 | 4 | 3 | 4 | 4 | 3 | 5 | 4 | 36 | 5 | 4 | 3 | 4 | 5 | 4 | 4 | 3 | 4 | 36 | 72 |
+| **Hcp** | 11 | 17 | 3 | 13 | 1 | 7 | 15 | 5 | 9 | | 18 | 10 | 8 | 4 | 16 | 2 | 12 | 14 | 6 | | |
+
+
 ## Common Pitfalls and Lessons Learned
 
 ### 1. Component Design Mistakes
@@ -85,6 +94,8 @@
 - **DON'T**: Forget `.single()` for single row queries
 - **DON'T**: Ignore RLS in production. Security matters
 - **LEARNED**: Supabase returns `null` for empty results, not empty array
+
+
 
 ### 10. Quick Wins Checklist
 ```javascript
@@ -183,25 +194,6 @@ ALTER TABLE scores
 ADD CONSTRAINT fk_scores_user
 FOREIGN KEY (user_id) REFERENCES users(id)
 DEFERRABLE INITIALLY DEFERRED;
-```
-
-### RLS Performance Optimization
-**NEVER** use complex joins in RLS policies!
-**Wrong**:
-```sql
-CREATE POLICY "user_scores" ON scores
-USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.golfer_id = scores.golfer_id));
-```
-**Correct**:
-```sql
--- Add user_id directly to tables
-CREATE POLICY "user_scores" ON scores
-USING (user_id = auth.uid());
-```
-**Always add indexes**:
-```sql
-CREATE INDEX idx_scores_user_id ON scores(user_id);
-CREATE INDEX idx_scores_user_golfer ON scores(user_id, golfer_id);
 ```
 
 ## Deployment & Build Issues
